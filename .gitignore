@@ -5,7 +5,7 @@ __pycache__/
 local_settings.py
 db.sqlite3
 db.sqlite3-journal
-lettering_web_api/.env
+app/.env
 .venv
 .env
 env/
