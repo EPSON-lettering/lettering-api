@@ -11,7 +11,7 @@ class Language(models.Model):
 
 class User(models.Model):
     oauth_id = models.ForeignKey(OauthUser, on_delete=models.CASCADE)
-    nickname = models.CharField(max_length=30,unique=True)
+    nickname = models.CharField(max_length=30)
     profile_image_url = models.TextField(null=True)
     created_at = models.DateTimeField(auto_now_add=True)
     withdraw_at = models.DateTimeField(null=True)
