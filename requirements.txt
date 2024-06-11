@@ -2,5 +2,6 @@ djangorestframework-simplejwt
 django-cors-headers
 djangorestframework
 drf-yasg
+python-dotenv
 django-dotenv
 psycopg2
