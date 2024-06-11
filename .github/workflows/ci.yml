@@ -17,11 +17,10 @@ jobs:
 
     steps:
     - name: Run Remote Server Script that re-run application
-    - uses: appleboy/ssh-action@v1.0.3
-    - run: source /home/galaxy4276/script/letter-u/server_deploy.sh
-
-    - name: Send GitHub Action trigger data to Slack workflow
-      id: slack
-      uses: slackapi/slack-github-action@v1.26.0
-      env:
-        SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+      uses: appleboy/ssh-action@v1.0.3
+      with:
+        host: ${{ secrets.HOST }}
+        username: ${{ secrets.USERNAME }}
+        key: ${{ secrets.KEY }}
+        script: |
+          source /home/galaxy4276/script/letter-u/server_deploy.sh
