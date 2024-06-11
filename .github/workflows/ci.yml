@@ -1,0 +1,21 @@
+name: Django CI
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+
+jobs:
+  build:
+
+    runs-on: ubuntu-latest
+    strategy:
+      max-parallel: 4
+      matrix:
+        python-version: [3.7, 3.8, 3.9]
+
+    steps:
+    - name: Run Remote Server Script that re-run application
+    - uses: appleboy/ssh-action@v1.0.3
+    - run: source /home/galaxy4276/script/letter-u/server_deploy.sh
