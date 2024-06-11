@@ -11,4 +11,3 @@ app/.env
 env/
 venv/
 .idea/
-migrations/
