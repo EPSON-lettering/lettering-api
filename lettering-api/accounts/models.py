@@ -9,6 +9,7 @@ class Language(models.Model):
     def __str__(self):
         return self.lang_name
 
+
 class User(models.Model):
     oauth_id = models.ForeignKey(OauthUser, on_delete=models.CASCADE)
     nickname = models.CharField(max_length=30)

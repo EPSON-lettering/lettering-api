@@ -9,6 +9,7 @@ class Interest(models.Model):
     def __str__(self):
         return self.name
 
+
 class UserInterest(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE)
     interest = models.ForeignKey(Interest, on_delete=models.CASCADE)
