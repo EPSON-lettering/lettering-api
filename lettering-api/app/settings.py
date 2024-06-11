@@ -18,6 +18,10 @@ INSTALLED_APPS = [
     'drf_yasg',
     'accounts',
     'interests',
+    'letters',
+    'matching',
+    'notifications',
+    'oauth',
 ]
 
 MIDDLEWARE = [
