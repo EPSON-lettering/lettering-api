@@ -1,3 +1,6 @@
 from django.db import models
 
-# Create your models here.
+
+class OauthUser(models.Model):
+    provider = models.CharField(max_length=30)
+    provider_id = models.TextField()
