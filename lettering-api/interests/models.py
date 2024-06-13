@@ -4,7 +4,7 @@ from accounts.models import User
 
 class Interest(models.Model):
     name = models.CharField(max_length=30)
-    image = models.TextField()
+    image = models.FileField(upload_to='interests/', null=True)
 
     def __str__(self):
         return self.name
