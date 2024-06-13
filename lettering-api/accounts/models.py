@@ -17,8 +17,8 @@ class User(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     withdraw_at = models.DateTimeField(null=True)
     language = models.ForeignKey(Language, on_delete=models.CASCADE)
-    printer_status = models.BooleanField()
-    is_loggined = models.BooleanField()
+    printer_status = models.BooleanField(default=False)
+    is_loggined = models.BooleanField(default=False)
     withdraw_reason = models.TextField(null=True)
     email = models.EmailField()
 
