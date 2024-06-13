@@ -7,6 +7,7 @@ from .serializers import InterestSerializer, UserInterestSerializer
 
 
 class InterestView(APIView):
+    @swagger_auto_schema(operation_summary="관심사 List")
     def get(self, request):
         queryset = Interest.objects.all()
         serializer = InterestSerializer(queryset, many=True)

@@ -24,7 +24,7 @@ class NicknameCheckView(APIView):
         return Response({"isUnique": False, "errors": serializer.errors}, status=status.HTTP_200_OK)
 
 class GoogleLogin(APIView):
-    @swagger_auto_schema(operation_summary="Google OAuth Login")
+    @swagger_auto_schema(operation_summary="Google OAuth 로그인")
     def get(self, request):
         google_oauth_url = (
             f"https://accounts.google.com/o/oauth2/v2/auth?client_id={settings.GOOGLE_CLIENT_ID}"
@@ -84,7 +84,7 @@ class GoogleCallback(APIView):
 
 
 class RegisterUser(APIView):
-    @swagger_auto_schema(operation_summary="Register User", request_body=RegisterUserSerializer)
+    @swagger_auto_schema(operation_summary="회원가입", request_body=RegisterUserSerializer)
     def post(self, request):
         serializer = RegisterUserSerializer(data=request.data)
         if serializer.is_valid():
@@ -97,13 +97,13 @@ class RegisterUser(APIView):
 
 
 class Logout(APIView):
-    @swagger_auto_schema(operation_summary="Logout User")
+    @swagger_auto_schema(operation_summary="로그아웃")
     def post(self, request):
         request.session.flush()
         return Response({'message': 'User logged out successfully'}, status=status.HTTP_200_OK)
 
 class LanguageListView(APIView):
-    @swagger_auto_schema(operation_summary="Get Language List")
+    @swagger_auto_schema(operation_summary="언어 List")
     def get(self, request):
         languages = Language.objects.all()
         serializer = LanguageSerializer(languages, many=True)
