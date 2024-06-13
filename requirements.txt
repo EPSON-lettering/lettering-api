@@ -4,5 +4,7 @@ djangorestframework
 drf-yasg
 django-allauth
 python-dotenv
+boto3
+django-storages
 django-dotenv
 psycopg2
