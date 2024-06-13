@@ -8,3 +8,8 @@ boto3
 django-storages
 django-dotenv
 psycopg2
+psycopg2-binary
+requests
+PyJWT
+gunicorn
+whitenoise
