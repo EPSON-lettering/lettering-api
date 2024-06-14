@@ -12,8 +12,8 @@ from rest_framework.permissions import IsAuthenticated, AllowAny
 from rest_framework_simplejwt.tokens import RefreshToken
 
 # 구글 소셜로그인 변수 설정
-BASE_URL = 'http://localhost:3000/'
-GOOGLE_CALLBACK_URI = BASE_URL + 'callback'
+BASE_URL = settings.BASE_URL
+GOOGLE_CALLBACK_URI = settings.GOOGLE_CALLBACK_URI
 
 class NicknameView(APIView):
     def get_permissions(self):
@@ -27,8 +27,8 @@ class NicknameView(APIView):
     def get(self, request):
         serializer = NicknameCheckSerializer(data=request.query_params)
         if serializer.is_valid():
-            return Response(status=status.HTTP_200_OK)
-        return Response({"errors": serializer.errors}, status=status.HTTP_400_BAD_REQUEST)
+            return Response({ "available": True }, status=status.HTTP_200_OK)
+        return Response({ "available": False }, status=status.HTTP_200_OK)
 
     @swagger_auto_schema(operation_summary="닉네임 변경", request_body=NicknameCheckSerializer)
     def post(self, request):
