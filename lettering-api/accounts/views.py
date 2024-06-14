@@ -11,7 +11,7 @@ from .serializers import UserSerializer
 import jwt
 
 # 구글 소셜로그인 변수 설정
-BASE_URL = 'http://localhost:8000/'
+BASE_URL = 'http://galaxy4276.asuscomm.com:3000'
 GOOGLE_CALLBACK_URI = BASE_URL + 'account/google/callback/'
 
 class NicknameCheckView(APIView):
@@ -45,7 +45,7 @@ class GoogleAuthLoginUrl(APIView):
             f"&scope=email"
             f"&response_type=code"
         )
-        return Response({"oauth_url": google_oauth_url})
+        return Response({"oauthUrl": google_oauth_url})
 
 
 class GoogleCallback(APIView):
