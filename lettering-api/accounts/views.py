@@ -36,18 +36,6 @@ class GoogleLogin(APIView):
         return Response({"oauthUrl": google_oauth_url})
 
 
-class GoogleAuthLoginUrl(APIView):
-    @swagger_auto_schema(operation_summary="Google OAuth 인가 URL 전달 API")
-    def get(self, request):
-        google_oauth_url = (
-            f"https://accounts.google.com/o/oauth2/v2/auth?client_id={settings.GOOGLE_CLIENT_ID}"
-            f"&redirect_uri={GOOGLE_CALLBACK_URI}"
-            f"&scope=email"
-            f"&response_type=code"
-        )
-        return Response({"oauthUrl": google_oauth_url})
-
-
 class GoogleCallback(APIView):
     @swagger_auto_schema(operation_summary="Google OAuth Callback", request_body=GoogleCallbackSerializer)
     def post(self, request):
