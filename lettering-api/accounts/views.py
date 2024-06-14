@@ -8,13 +8,15 @@ from rest_framework import status
 from .models import User, Language
 from oauth.models import OauthUser
 from .serializers import UserSerializer
-import jwt
+from rest_framework.permissions import IsAuthenticated, AllowAny
+from rest_framework_simplejwt.tokens import RefreshToken
 
 # 구글 소셜로그인 변수 설정
 BASE_URL = 'http://galaxy4276.asuscomm.com:3000'
 GOOGLE_CALLBACK_URI = BASE_URL + 'account/google/callback/'
 
 class NicknameCheckView(APIView):
+    permission_classes = [AllowAny]
 
     @swagger_auto_schema(operation_summary="Nickname 중복 확인", request_body=NicknameCheckSerializer)
     def post(self, request):
@@ -25,6 +27,8 @@ class NicknameCheckView(APIView):
 
 
 class GoogleLogin(APIView):
+    permission_classes = [AllowAny]
+
     @swagger_auto_schema(operation_summary="Google OAuth 로그인")
     def get(self, request):
         google_oauth_url = (
@@ -37,6 +41,8 @@ class GoogleLogin(APIView):
 
 
 class GoogleCallback(APIView):
+    permission_classes = [AllowAny]
+
     @swagger_auto_schema(operation_summary="Google OAuth Callback", request_body=GoogleCallbackSerializer)
     def post(self, request):
         code = request.data.get('code')
@@ -73,10 +79,15 @@ class GoogleCallback(APIView):
             user.is_loggined = True
             user.save()
 
-            payload = {'user_id': user.id}
-            jwt_token = jwt.encode(payload, settings.SECRET_KEY, algorithm='HS256')
+
+            refresh = RefreshToken.for_user(user)
             serializer = UserSerializer(user)
-            return Response({'message': 'User logged in successfully', 'user': serializer.data, 'token': jwt_token}, status=status.HTTP_200_OK)
+            return Response({
+                'message': 'User logged in successfully',
+                'user': serializer.data,
+                'access': str(refresh.access_token),
+                'refresh': str(refresh)
+            }, status=status.HTTP_200_OK)
         except OauthUser.DoesNotExist:
             return Response({
                 'unique': email,
@@ -86,19 +97,27 @@ class GoogleCallback(APIView):
 
 
 class RegisterUser(APIView):
+    permission_classes = [AllowAny]
+
     @swagger_auto_schema(operation_summary="회원가입", request_body=RegisterUserSerializer)
     def post(self, request):
         serializer = RegisterUserSerializer(data=request.data)
         if serializer.is_valid():
             user = serializer.save()
 
-            payload = {'user_id': user.id}
-            jwt_token = jwt.encode(payload, settings.SECRET_KEY, algorithm='HS256')
-            return Response({'message': 'User registered successfully', 'user': UserSerializer(user).data, 'token': jwt_token}, status=status.HTTP_201_CREATED)
+            refresh = RefreshToken.for_user(user)
+            return Response({
+                'message': 'User registered successfully',
+                'user': UserSerializer(user).data,
+                'access': str(refresh.access_token),
+                'refresh': str(refresh)
+            }, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
 class Logout(APIView):
+    permission_classes = [IsAuthenticated]
+
     @swagger_auto_schema(operation_summary="로그아웃")
     def post(self, request):
         request.session.flush()
@@ -106,6 +125,8 @@ class Logout(APIView):
 
 
 class LanguageListView(APIView):
+    permission_classes = [AllowAny]
+
     @swagger_auto_schema(operation_summary="언어 List")
     def get(self, request):
         languages = Language.objects.all()

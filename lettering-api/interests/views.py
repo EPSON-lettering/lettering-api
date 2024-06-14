@@ -4,9 +4,12 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 from .models import Interest, UserInterest
 from .serializers import InterestSerializer, UserInterestSerializer
+from rest_framework.permissions import IsAuthenticated, AllowAny
 
 
 class InterestView(APIView):
+    permission_classes = [AllowAny]
+
     @swagger_auto_schema(operation_summary="관심사 List")
     def get(self, request):
         queryset = Interest.objects.all()

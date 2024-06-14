@@ -3,6 +3,7 @@ from drf_yasg import openapi
 from drf_yasg.views import get_schema_view
 from django.urls import path
 from .views import *
+from rest_framework.permissions import AllowAny
 
 from . import views
 
@@ -13,6 +14,7 @@ schema_view = get_schema_view(
         description="Lettering API",
     ),
     public=True,
+    permission_classes=(AllowAny,),
 )
 
 urlpatterns = [
