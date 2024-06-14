@@ -13,7 +13,7 @@ from rest_framework_simplejwt.tokens import RefreshToken
 
 # 구글 소셜로그인 변수 설정
 BASE_URL = settings.BASE_URL
-GOOGLE_CALLBACK_URI = settings.GOOGLE_CALLBACK_URI
+GOOGLE_CALLBACK_URI = BASE_URL + settings.GOOGLE_CALLBACK_URI
 
 
 class NicknameView(APIView):
