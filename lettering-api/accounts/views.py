@@ -23,6 +23,7 @@ class NicknameCheckView(APIView):
             return Response({"isUnique": True}, status=status.HTTP_200_OK)
         return Response({"isUnique": False, "errors": serializer.errors}, status=status.HTTP_200_OK)
 
+
 class GoogleLogin(APIView):
     @swagger_auto_schema(operation_summary="Google OAuth 로그인")
     def get(self, request):
@@ -33,6 +34,19 @@ class GoogleLogin(APIView):
             f"&response_type=code"
         )
         return Response({"oauth_url": google_oauth_url})
+
+
+class GoogleAuthLoginUrl(APIView):
+    @swagger_auto_schema(operation_summary="Google OAuth 로그인")
+    def get(self, request):
+        google_oauth_url = (
+            f"https://accounts.google.com/o/oauth2/v2/auth?client_id={settings.GOOGLE_CLIENT_ID}"
+            f"&redirect_uri={GOOGLE_CALLBACK_URI}"
+            f"&scope=email"
+            f"&response_type=code"
+        )
+        return Response({"oauth_url": google_oauth_url})
+
 
 class GoogleCallback(APIView):
     @swagger_auto_schema(operation_summary="Google OAuth Callback", request_body=GoogleCallbackSerializer)
@@ -101,6 +115,7 @@ class Logout(APIView):
     def post(self, request):
         request.session.flush()
         return Response({'message': 'User logged out successfully'}, status=status.HTTP_200_OK)
+
 
 class LanguageListView(APIView):
     @swagger_auto_schema(operation_summary="언어 List")

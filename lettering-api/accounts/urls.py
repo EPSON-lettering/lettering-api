@@ -21,6 +21,7 @@ urlpatterns = [
     path('redoc/', schema_view.with_ui('redoc', cache_timeout=0), name='schema-redoc'),
 
     path('google/login/', GoogleLogin.as_view(), name='google_login'),
+    path('google/oauth/', GoogleLogin.as_view(), name='google_oauth_login_url'),
     path('google/callback/', GoogleCallback.as_view(), name='google_callback'),
     path('register/', RegisterUser.as_view(), name='register_user'),
     path('logout/', Logout.as_view(), name='logout'),
