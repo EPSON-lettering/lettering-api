@@ -33,7 +33,7 @@ class GoogleLogin(APIView):
             f"&scope=email"
             f"&response_type=code"
         )
-        return Response({"oauth_url": google_oauth_url})
+        return Response({"oauthUrl": google_oauth_url})
 
 
 class GoogleAuthLoginUrl(APIView):
