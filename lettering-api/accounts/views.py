@@ -15,6 +15,7 @@ from rest_framework_simplejwt.tokens import RefreshToken
 BASE_URL = settings.BASE_URL
 GOOGLE_CALLBACK_URI = settings.GOOGLE_CALLBACK_URI
 
+
 class NicknameView(APIView):
     def get_permissions(self):
         if self.request.method == 'GET':
@@ -28,7 +29,7 @@ class NicknameView(APIView):
         serializer = NicknameCheckSerializer(data=request.query_params)
         if serializer.is_valid():
             return Response({ "available": True }, status=status.HTTP_200_OK)
-        return Response({ "available": False }, status=status.HTTP_200_OK)
+        return Response({ "available": False, "error": serializers.error }, status=status.HTTP_200_OK)
 
     @swagger_auto_schema(operation_summary="닉네임 변경", request_body=NicknameCheckSerializer)
     def post(self, request):
@@ -42,6 +43,7 @@ class NicknameView(APIView):
             user.save()
             return Response(status=status.HTTP_200_OK)
         return Response({"errors": serializer.errors}, status=status.HTTP_400_BAD_REQUEST)
+
 
 class GoogleLogin(APIView):
     permission_classes = [AllowAny]
