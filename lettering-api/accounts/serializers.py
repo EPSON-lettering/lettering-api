@@ -8,19 +8,18 @@ class NicknameCheckSerializer(serializers.Serializer):
     nickname = serializers.CharField(max_length=13, required=True)
 
     def validate_nickname(self, value):
-        # 중복 체크
         if User.objects.filter(nickname=value).exists():
-            raise serializers.ValidationError("This nickname is already taken.")
+            raise serializers.ValidationError("중복된 닉네임")
 
         if not re.match(r'^[A-Za-z0-9_]+$', value):
-            raise serializers.ValidationError("Special characters other than numbers and '_' are not allowed.")
+            raise serializers.ValidationError("문자 또는 숫자, 특수문자(_)만 가능합니다.")
 
         return value
 
 
 class RegisterUserSerializer(serializers.Serializer):
     unique = serializers.CharField(max_length=255)
-    provider = serializers.ChoiceField(choices=['google', 'facebook', 'kakao', 'apple'])
+    provider = serializers.CharField(max_length=30)
     language = serializers.CharField(max_length=30)
     nickname = serializers.CharField(max_length=30)
     interests = serializers.ListField(

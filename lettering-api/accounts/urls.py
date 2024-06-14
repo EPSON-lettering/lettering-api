@@ -29,5 +29,5 @@ urlpatterns = [
     path('logout/', Logout.as_view(), name='logout'),
 
     path('languages/', LanguageListView.as_view(), name='language_list'),
-    path('nickname/check/', views.NicknameCheckView.as_view(), name='nickname_check'),
+    path('nickname/', views.NicknameView.as_view(), name='nickname'),
 ]

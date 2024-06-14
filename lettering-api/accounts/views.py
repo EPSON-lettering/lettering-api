@@ -15,16 +15,33 @@ from rest_framework_simplejwt.tokens import RefreshToken
 BASE_URL = 'http://galaxy4276.asuscomm.com:3000/'
 GOOGLE_CALLBACK_URI = BASE_URL + 'account/google/callback/'
 
-class NicknameCheckView(APIView):
-    permission_classes = [AllowAny]
+class NicknameView(APIView):
+    def get_permissions(self):
+        if self.request.method == 'GET':
+            return [AllowAny()]
+        elif self.request.method == 'POST':
+            return [IsAuthenticated()]
+        return super().get_permissions()
 
-    @swagger_auto_schema(operation_summary="Nickname 중복 확인", request_body=NicknameCheckSerializer)
+    @swagger_auto_schema(operation_summary="닉네임 유효성 검사", query_serializer=NicknameCheckSerializer)
+    def get(self, request):
+        serializer = NicknameCheckSerializer(data=request.query_params)
+        if serializer.is_valid():
+            return Response(status=status.HTTP_200_OK)
+        return Response({"errors": serializer.errors}, status=status.HTTP_400_BAD_REQUEST)
+
+    @swagger_auto_schema(operation_summary="닉네임 변경", request_body=NicknameCheckSerializer)
     def post(self, request):
         serializer = NicknameCheckSerializer(data=request.data)
         if serializer.is_valid():
-            return Response({"isUnique": True}, status=status.HTTP_200_OK)
-        return Response({"isUnique": False, "errors": serializer.errors}, status=status.HTTP_200_OK)
-
+            nickname = serializer.validated_data['nickname']
+            user = request.user
+            if user.nickname == nickname:
+                return Response(status=status.HTTP_200_OK)
+            user.nickname = nickname
+            user.save()
+            return Response(status=status.HTTP_200_OK)
+        return Response({"errors": serializer.errors}, status=status.HTTP_400_BAD_REQUEST)
 
 class GoogleLogin(APIView):
     permission_classes = [AllowAny]
@@ -83,7 +100,7 @@ class GoogleCallback(APIView):
             refresh = RefreshToken.for_user(user)
             serializer = UserSerializer(user)
             return Response({
-                'message': 'User logged in successfully',
+                'message': '로그인 성공',
                 'user': serializer.data,
                 'access': str(refresh.access_token),
                 'refresh': str(refresh)
@@ -92,7 +109,7 @@ class GoogleCallback(APIView):
             return Response({
                 'unique': email,
                 'provider': 'google',
-                'message': 'User does not exist. Please proceed with registration.'
+                'message': '이메일에 해당하는 유저가 존재하지 않습니다. 회원가입을 진행해주세요.'
             }, status=status.HTTP_200_OK)
 
 
@@ -107,7 +124,6 @@ class RegisterUser(APIView):
 
             refresh = RefreshToken.for_user(user)
             return Response({
-                'message': 'User registered successfully',
                 'user': UserSerializer(user).data,
                 'access': str(refresh.access_token),
                 'refresh': str(refresh)
@@ -121,7 +137,7 @@ class Logout(APIView):
     @swagger_auto_schema(operation_summary="로그아웃")
     def post(self, request):
         request.session.flush()
-        return Response({'message': 'User logged out successfully'}, status=status.HTTP_200_OK)
+        return Response(status=status.HTTP_200_OK)
 
 
 class LanguageListView(APIView):
