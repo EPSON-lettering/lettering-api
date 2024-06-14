@@ -12,7 +12,7 @@ from rest_framework.permissions import IsAuthenticated, AllowAny
 from rest_framework_simplejwt.tokens import RefreshToken
 
 # 구글 소셜로그인 변수 설정
-BASE_URL = 'http://galaxy4276.asuscomm.com:3000'
+BASE_URL = 'http://galaxy4276.asuscomm.com:3000/'
 GOOGLE_CALLBACK_URI = BASE_URL + 'account/google/callback/'
 
 class NicknameCheckView(APIView):
