@@ -13,3 +13,4 @@ requests
 PyJWT
 gunicorn
 cryptography
+django-cors-headers
