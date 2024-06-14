@@ -29,7 +29,7 @@ class NicknameView(APIView):
         serializer = NicknameCheckSerializer(data=request.query_params)
         if serializer.is_valid():
             return Response({ "available": True }, status=status.HTTP_200_OK)
-        return Response({ "available": False, "error": serializers.error }, status=status.HTTP_200_OK)
+        return Response({ "available": False, "error": serializer.errors['nickname'][0] }, status=status.HTTP_200_OK)
 
     @swagger_auto_schema(operation_summary="닉네임 변경", request_body=NicknameCheckSerializer)
     def post(self, request):
