@@ -12,8 +12,8 @@ from rest_framework.permissions import IsAuthenticated, AllowAny
 from rest_framework_simplejwt.tokens import RefreshToken
 
 # 구글 소셜로그인 변수 설정
-BASE_URL = 'http://galaxy4276.asuscomm.com:3000/'
-GOOGLE_CALLBACK_URI = BASE_URL + 'account/google/callback/'
+BASE_URL = 'http://localhost:3000/'
+GOOGLE_CALLBACK_URI = BASE_URL + 'callback'
 
 class NicknameView(APIView):
     def get_permissions(self):
@@ -110,7 +110,7 @@ class GoogleCallback(APIView):
                 'unique': email,
                 'provider': 'google',
                 'message': '이메일에 해당하는 유저가 존재하지 않습니다. 회원가입을 진행해주세요.'
-            }, status=status.HTTP_200_OK)
+            }, status=status.HTTP_401_UNAUTHORIZED)
 
 
 class RegisterUser(APIView):
