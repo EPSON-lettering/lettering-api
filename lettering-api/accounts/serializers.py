@@ -4,6 +4,7 @@ from oauth.models import OauthUser
 from interests.models import Interest, UserInterest
 import re
 
+
 class NicknameCheckSerializer(serializers.Serializer):
     nickname = serializers.CharField(max_length=13, required=True)
 
@@ -11,7 +12,7 @@ class NicknameCheckSerializer(serializers.Serializer):
         if User.objects.filter(nickname=value).exists():
             raise serializers.ValidationError("이미 사용 중인 닉네임입니다!")
 
-        if not re.match(r'^[A-Za-z0-9_]+$', value):
+        if not re.match(r'^[가-힣A-Za-z0-9_]+$', value):
             raise serializers.ValidationError("문자 또는 숫자, 특수문자(_)만 가능합니다.")
 
         return value
