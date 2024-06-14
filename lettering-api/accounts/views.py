@@ -37,7 +37,7 @@ class GoogleLogin(APIView):
 
 
 class GoogleAuthLoginUrl(APIView):
-    @swagger_auto_schema(operation_summary="Google OAuth 로그인")
+    @swagger_auto_schema(operation_summary="Google OAuth 인가 URL 전달 API")
     def get(self, request):
         google_oauth_url = (
             f"https://accounts.google.com/o/oauth2/v2/auth?client_id={settings.GOOGLE_CLIENT_ID}"
