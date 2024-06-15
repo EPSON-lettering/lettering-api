@@ -56,6 +56,10 @@ class UserSerializer(serializers.ModelSerializer):
         model = User
         fields = '__all__'
 
+    def get_interests(self, obj):
+        user_interests = UserInterest.objects.filter(user=obj)
+        return [user_interest.interest for user_interest in user_interests]
+
 class LanguageSerializer(serializers.ModelSerializer):
     class Meta:
         model = Language

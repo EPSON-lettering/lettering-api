@@ -183,3 +183,11 @@ class LanguageListView(APIView):
         serializer = LanguageSerializer(languages, many=True)
         return Response(serializer.data, status=status.HTTP_200_OK)
 
+
+class UserInfo(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self,request):
+        serializers = UserSerializer(request.user)
+        return Response(serializers.data, status=status.HTTP_200_OK)
+
