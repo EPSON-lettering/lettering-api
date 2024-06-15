@@ -24,14 +24,22 @@ class NicknameView(APIView):
             return [IsAuthenticated()]
         return super().get_permissions()
 
-    @swagger_auto_schema(operation_summary="닉네임 유효성 검사", query_serializer=NicknameCheckSerializer)
+    @swagger_auto_schema(
+        operation_summary="닉네임 유효성 검사",
+        query_serializer=NicknameCheckSerializer,
+        responses={200: "available: boolean, error: string"}
+    )
     def get(self, request):
         serializer = NicknameCheckSerializer(data=request.query_params)
         if serializer.is_valid():
             return Response({ "available": True }, status=status.HTTP_200_OK)
         return Response({ "available": False, "error": serializer.errors['nickname'][0] }, status=status.HTTP_200_OK)
 
-    @swagger_auto_schema(operation_summary="닉네임 변경", request_body=NicknameCheckSerializer)
+    @swagger_auto_schema(
+        operation_summary="닉네임 변경",
+        request_body=NicknameCheckSerializer,
+        responses={200: "Success", 400: "Error message"}
+    )
     def post(self, request):
         serializer = NicknameCheckSerializer(data=request.data)
         if serializer.is_valid():
@@ -48,7 +56,10 @@ class NicknameView(APIView):
 class GoogleLogin(APIView):
     permission_classes = [AllowAny]
 
-    @swagger_auto_schema(operation_summary="Google OAuth 로그인")
+    @swagger_auto_schema(
+        operation_summary="Google OAuth 로그인",
+        responses={200: "oauthUrl: string"}
+    )
     def get(self, request):
         google_oauth_url = (
             f"https://accounts.google.com/o/oauth2/v2/auth?client_id={settings.GOOGLE_CLIENT_ID}"
@@ -62,7 +73,15 @@ class GoogleLogin(APIView):
 class GoogleCallback(APIView):
     permission_classes = [AllowAny]
 
-    @swagger_auto_schema(operation_summary="Google OAuth Callback", request_body=GoogleCallbackSerializer)
+    @swagger_auto_schema(
+        operation_summary="Google OAuth Callback",
+        request_body=GoogleCallbackSerializer,
+        responses={
+            200: "message: string, user: object, access: string, refresh: string",
+            400: "Error message",
+            401: "unique: string, provider: string, message: string"
+        }
+    )
     def post(self, request):
         code = request.data.get('code')
         if not code:
@@ -118,7 +137,14 @@ class GoogleCallback(APIView):
 class RegisterUser(APIView):
     permission_classes = [AllowAny]
 
-    @swagger_auto_schema(operation_summary="회원가입", request_body=RegisterUserSerializer)
+    @swagger_auto_schema(
+        operation_summary="회원가입",
+        request_body=RegisterUserSerializer,
+        responses={
+            201: "user: object, access: string, refresh: string",
+            400: "Error message"
+        }
+    )
     def post(self, request):
         serializer = RegisterUserSerializer(data=request.data)
         if serializer.is_valid():
@@ -136,7 +162,10 @@ class RegisterUser(APIView):
 class Logout(APIView):
     permission_classes = [IsAuthenticated]
 
-    @swagger_auto_schema(operation_summary="로그아웃")
+    @swagger_auto_schema(
+        operation_summary="로그아웃",
+        responses={200: "Success"}
+    )
     def post(self, request):
         request.session.flush()
         return Response(status=status.HTTP_200_OK)
@@ -145,8 +174,12 @@ class Logout(APIView):
 class LanguageListView(APIView):
     permission_classes = [AllowAny]
 
-    @swagger_auto_schema(operation_summary="언어 List")
+    @swagger_auto_schema(
+        operation_summary="언어 List",
+        responses={200: LanguageSerializer(many=True)}
+    )
     def get(self, request):
         languages = Language.objects.all()
         serializer = LanguageSerializer(languages, many=True)
         return Response(serializer.data, status=status.HTTP_200_OK)
+

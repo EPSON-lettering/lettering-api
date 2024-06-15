@@ -3,34 +3,35 @@ from rest_framework import status
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from .models import Interest, UserInterest
-from .serializers import InterestSerializer, UserInterestSerializer
+from .serializers import InterestSerializer, UserInterestChangeSerializer
 from rest_framework.permissions import IsAuthenticated, AllowAny
 
 
 class InterestView(APIView):
-    permission_classes = [AllowAny]
+    def get_permissions(self):
+        if self.request.method == 'GET':
+            return [AllowAny()]
+        elif self.request.method == 'POST':
+            return [IsAuthenticated()]
+        return super().get_permissions()
 
-    @swagger_auto_schema(operation_summary="관심사 List")
+    @swagger_auto_schema(
+        operation_summary="관심사 List",
+        responses={200: InterestSerializer(many=True)}
+    )
     def get(self, request):
         queryset = Interest.objects.all()
         serializer = InterestSerializer(queryset, many=True)
-        return Response(serializer.data)
+        return Response(serializer.data, status=status.HTTP_200_OK)
 
-
-# class UserInterestView(APIView):
-#     @swagger_auto_schema(operation_summary="nickname 중복 확인", request_body=UserInterestSerializer)
-#     def post(self, request):
-#         try:
-#             data = request.data['data']
-#             for interest in data:
-#                 serializer = InterestSerializer(data=interest)
-#                 if serializer.is_valid():
-#                     interest = serializer.save()
-#
-#                     UserInterest.objects.create(
-#                         user=request.user,
-#                         interest=interest,
-#                     )
-#             return Response("성공했습니다 ", status=status.HTTP_201_CREATED)
-#         except Exception as e:
-#             return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
+    @swagger_auto_schema(
+        operation_summary="관심사 변경",
+        request_body=UserInterestChangeSerializer,
+        responses={200: "성공", 400: "잘못된 요청"}
+    )
+    def post(self, request):
+        serializer = UserInterestChangeSerializer(data=request.data)
+        if serializer.is_valid():
+            user = serializer.save()
+            return Response(status=status.HTTP_200_OK)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
