@@ -24,7 +24,8 @@ class RegisterUserSerializer(serializers.Serializer):
     language = serializers.CharField(max_length=30)
     nickname = serializers.CharField(max_length=30)
     interests = serializers.ListField(
-        child=serializers.IntegerField()
+        child=serializers.IntegerField(),
+        allow_empty=False
     )
 
     def create(self, validated_data):
