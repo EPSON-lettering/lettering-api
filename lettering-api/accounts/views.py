@@ -119,9 +119,10 @@ class GoogleCallback(APIView):
             user.is_loggined = True
             user.save()
             user_interests = UserInterest.objects.filter(user=user)
+            interests = [user_interest.interest for user_interest in user_interests]
 
             refresh = RefreshToken.for_user(user)
-            serializer = UserSerializer(user, interests=user_interests)
+            serializer = UserSerializer(user, interests=interests)
             user_serial = serializer.data
             return Response({
                 'message': '로그인 성공',

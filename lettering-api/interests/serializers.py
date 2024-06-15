@@ -6,7 +6,7 @@ from accounts.models import User
 class InterestSerializer(serializers.ModelSerializer):
     class Meta:
         model = Interest
-        fields = ['name', 'image']
+        fields = '__all__'
 
 
 class UserInterestChangeSerializer(serializers.Serializer):
