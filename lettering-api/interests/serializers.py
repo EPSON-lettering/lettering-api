@@ -8,12 +8,6 @@ class InterestSerializer(serializers.ModelSerializer):
         fields = '__all__'
 
 
-class UserInterestSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = UserInterest
-        fields = ['id', 'interest', 'user']
-
-
 class UserInterestChangeSerializer(serializers.Serializer):
     nickname = serializers.CharField(max_length=30, required=True)
     interests = serializers.ListField(

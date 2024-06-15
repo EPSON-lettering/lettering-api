@@ -24,6 +24,7 @@ class InterestView(APIView):
         serializer = InterestSerializer(queryset, many=True)
         return Response(serializer.data, status=status.HTTP_200_OK)
 
+
     @swagger_auto_schema(
         operation_summary="관심사 변경",
         request_body=UserInterestChangeSerializer,
