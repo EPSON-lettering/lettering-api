@@ -38,7 +38,7 @@ class RegisterUserSerializer(serializers.Serializer):
         )
 
         user = User.objects.create(
-            oauth_id=oauth_user,
+            oauth=oauth_user,
             email=validated_data['unique'],
             nickname=validated_data['nickname'],
             language=language

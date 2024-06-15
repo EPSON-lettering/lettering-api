@@ -1,3 +1,4 @@
+from django.contrib.auth.base_user import AbstractBaseUser
 from django.db import models
 from oauth.models import OauthUser
 from django.utils import timezone
@@ -9,9 +10,12 @@ class Language(models.Model):
     def __str__(self):
         return self.lang_name
 
-class User(models.Model):
-    oauth_id = models.ForeignKey(OauthUser, on_delete=models.CASCADE)
-    nickname = models.CharField(max_length=30)
+
+class User(AbstractBaseUser):
+    USERNAME_FIELD = 'nickname'
+    password = models.CharField(null=True)
+    oauth = models.OneToOneField(OauthUser, on_delete=models.CASCADE, null=True, blank=True)
+    nickname = models.CharField(max_length=30, unique=True)
     profile_image_url = models.FileField(upload_to='accounts/', null=True)
     created_at = models.DateTimeField(auto_now_add=True)
     withdraw_at = models.DateTimeField(null=True)
