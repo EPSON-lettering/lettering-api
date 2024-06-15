@@ -46,11 +46,13 @@ class RegisterUserSerializer(serializers.Serializer):
         )
 
         interests_ids = validated_data['interests']
+        interests = []
         for interest_id in interests_ids:
             interest = Interest.objects.get(id=interest_id)
             UserInterest.objects.create(user=user, interest=interest)
+            interests.append(interest)
 
-        return user
+        return user, interests
 
 
 class UserSerializer(serializers.ModelSerializer):
