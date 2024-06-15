@@ -9,7 +9,7 @@ class Migration(migrations.Migration):
     initial = True
 
     dependencies = [
-        ('accounts', '0001_initial'),
+        # ('accounts', '0001_initial'),
         ('matching', '0001_initial'),
     ]
 
