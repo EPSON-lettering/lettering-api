@@ -2,6 +2,7 @@ from rest_framework import serializers
 from .models import User, Language
 from oauth.models import OauthUser
 from interests.models import Interest, UserInterest
+from interests.serializers import InterestSerializer
 import re
 
 
@@ -51,6 +52,7 @@ class RegisterUserSerializer(serializers.Serializer):
 
         return user
 
+
 class UserSerializer(serializers.ModelSerializer):
     oauthId = serializers.PrimaryKeyRelatedField(source='oauth_id', read_only=True)
     profileImageUrl = serializers.FileField(source='profile_image_url', read_only=True)
@@ -59,18 +61,32 @@ class UserSerializer(serializers.ModelSerializer):
     printerStatus = serializers.BooleanField(source='printer_status', read_only=True)
     isLoggined = serializers.BooleanField(source='is_loggined', read_only=True)
     withdrawReason = serializers.CharField(source='withdraw_reason', read_only=True)
+    interests = serializers.SerializerMethodField()
+
     class Meta:
         model = User
-        fields = ['id', 'oauthId', 'nickname', 'profileImageUrl', 'createdAt', 'withdrawAt', 'language', 'printerStatus', 'isLoggined', 'withdrawReason', 'email']
+        fields = [
+            'id', 'oauthId', 'nickname', 'profileImageUrl',
+            'createdAt', 'withdrawAt', 'language', 'printerStatus',
+            'isLoggined', 'withdrawReason', 'email', 'interests'
+        ]
+
+    def __init__(self, *args, **kwargs):
+        self.interests = kwargs.pop('interests', [])
+        super().__init__(*args, **kwargs)
 
     def get_interests(self, obj):
-        user_interests = UserInterest.objects.filter(user=obj)
-        return [user_interest.interest for user_interest in user_interests]
+        data = list(self.interests)
+        print(f'data: {data}')
+        return [InterestSerializer(interest).data for interest in self.interests]
+        # return InterestSerializer(data, many=True).data
+
 
 class LanguageSerializer(serializers.ModelSerializer):
     class Meta:
         model = Language
         fields = '__all__'
+
 
 class GoogleCallbackSerializer(serializers.Serializer):
     code = serializers.CharField(required=True)

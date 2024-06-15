@@ -7,6 +7,7 @@ from rest_framework.response import Response
 from rest_framework import status
 from .models import User, Language
 from oauth.models import OauthUser
+from interests.models import UserInterest, Interest
 from .serializers import UserSerializer
 from rest_framework.permissions import IsAuthenticated, AllowAny
 from rest_framework_simplejwt.tokens import RefreshToken
@@ -117,12 +118,14 @@ class GoogleCallback(APIView):
             user = User.objects.get(oauth=oauth_user)
             user.is_loggined = True
             user.save()
+            user_interests = UserInterest.objects.filter(user=user)
 
             refresh = RefreshToken.for_user(user)
-            serializer = UserSerializer(user)
+            serializer = UserSerializer(user, interests=user_interests)
+            user_serial = serializer.data
             return Response({
                 'message': '로그인 성공',
-                'user': serializer.data,
+                'user': user_serial,
                 'access': str(refresh.access_token),
                 'refresh': str(refresh)
             }, status=status.HTTP_200_OK)

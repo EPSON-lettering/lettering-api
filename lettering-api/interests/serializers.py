@@ -2,10 +2,11 @@ from rest_framework import serializers
 from .models import Interest, UserInterest
 from accounts.models import User
 
+
 class InterestSerializer(serializers.ModelSerializer):
     class Meta:
         model = Interest
-        fields = '__all__'
+        fields = ['name', 'image']
 
 
 class UserInterestChangeSerializer(serializers.Serializer):
