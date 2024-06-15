@@ -110,13 +110,13 @@ class GoogleCallback(APIView):
 
         email = email_data.get('email')
         provider_id = email_data.get('id')
+        print(f'provider_id: {provider_id}, email: {email}')
 
         try:
-            oauth_user = OauthUser.objects.get(provider='google', provider_id=provider_id)
-            user = User.objects.get(oauth_id=oauth_user)
+            oauth_user = OauthUser.objects.get(provider='google', provider_id=email)
+            user = User.objects.get(oauth=oauth_user)
             user.is_loggined = True
             user.save()
-
 
             refresh = RefreshToken.for_user(user)
             serializer = UserSerializer(user)
