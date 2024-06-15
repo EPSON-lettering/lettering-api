@@ -52,9 +52,16 @@ class RegisterUserSerializer(serializers.Serializer):
         return user
 
 class UserSerializer(serializers.ModelSerializer):
+    oauthId = serializers.PrimaryKeyRelatedField(source='oauth_id', read_only=True)
+    profileImageUrl = serializers.FileField(source='profile_image_url', read_only=True)
+    createdAt = serializers.DateTimeField(source='created_at', read_only=True)
+    withdrawAt = serializers.DateTimeField(source='withdraw_at', read_only=True)
+    printerStatus = serializers.BooleanField(source='printer_status', read_only=True)
+    isLoggined = serializers.BooleanField(source='is_loggined', read_only=True)
+    withdrawReason = serializers.CharField(source='withdraw_reason', read_only=True)
     class Meta:
         model = User
-        fields = '__all__'
+        fields = ['id', 'oauthId', 'nickname', 'profileImageUrl', 'createdAt', 'withdrawAt', 'language', 'printerStatus', 'isLoggined', 'withdrawReason', 'email']
 
     def get_interests(self, obj):
         user_interests = UserInterest.objects.filter(user=obj)
