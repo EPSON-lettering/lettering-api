@@ -83,7 +83,7 @@ class MatchRequestView(APIView):
             return Response({"detail": "Authentication credentials were not provided."}, status=status.HTTP_401_UNAUTHORIZED)
 
         try:
-            match_request = MatchRequest.objects.get(id=request_id, receiver=request.user)
+            match_request = MatchRequest.objects.get(id=request_id, requester=request.user)
         except MatchRequest.DoesNotExist:
             return Response({"detail": "Match request not found"}, status=status.HTTP_404_NOT_FOUND)
 
