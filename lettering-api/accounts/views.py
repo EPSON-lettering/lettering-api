@@ -230,6 +230,7 @@ class CheckUserHasMatchView(APIView):
         match = Match.objects.filter(
             Q(requester=user) | Q(acceptor=user) & Q(withdraw_reason__isnull=True)
         )
-        if match is None:
+        print(f'match: {match}')
+        if match.exists() is False:
             return Response({"isMatch": False})
         return Response({"isMatch": True})
