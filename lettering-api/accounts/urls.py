@@ -27,7 +27,7 @@ urlpatterns = [
     path('google/callback/', GoogleCallback.as_view(), name='google_callback'),
     path('register/', RegisterUser.as_view(), name='register_user'),
     path('logout/', Logout.as_view(), name='logout'),
-    path('userInfo/', UserInfo.as_view(), name='user_info'),
+    path('user/details/', UserDetails.as_view(), name='user_info'),
     path('languages/', LanguageListView.as_view(), name='language_list'),
     path('nickname/', views.NicknameView.as_view(), name='nickname'),
 ]
