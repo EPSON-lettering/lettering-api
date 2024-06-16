@@ -42,7 +42,8 @@ class RegisterUserSerializer(serializers.Serializer):
             oauth=oauth_user,
             email=validated_data['unique'],
             nickname=validated_data['nickname'],
-            language=language
+            language=language,
+            is_loggined=True
         )
 
         interests_ids = validated_data['interests']
