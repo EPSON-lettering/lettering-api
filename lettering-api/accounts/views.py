@@ -112,7 +112,6 @@ class GoogleCallback(APIView):
 
         email = email_data.get('email')
         provider_id = email_data.get('id')
-        print(f'provider_id: {provider_id}, email: {email}')
 
         try:
             oauth_user = OauthUser.objects.get(provider='google', provider_id=email)
@@ -202,10 +201,16 @@ class LanguageListView(APIView):
         return Response(serializer.data, status=status.HTTP_200_OK)
 
 
-class UserInfo(APIView):
+class UserDetails(APIView):
     permission_classes = [IsAuthenticated]
 
+    @swagger_auto_schema(
+        operation_summary="사용자 정보 불러오기",
+        responses={200: UserSerializer()}
+    )
     def get(self,request):
-        serializers = UserSerializer(request.user)
-        return Response(serializers.data, status=status.HTTP_200_OK)
+        user_interests = UserInterest.objects.filter(user=request.user)
+        interests = [user_interest.interest for user_interest in user_interests]
+        serializers = UserSerializer(request.user, interests=interests)
 
+        return Response(serializers.data, status=status.HTTP_200_OK)
