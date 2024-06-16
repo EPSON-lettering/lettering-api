@@ -52,7 +52,7 @@ class NicknameView(APIView):
             user.nickname = nickname
             user.save()
             return Response(status=status.HTTP_200_OK)
-        return Response({"errors": serializer.errors}, status=status.HTTP_400_BAD_REQUEST)
+        return Response({"error": serializer.errors}, status=status.HTTP_400_BAD_REQUEST)
 
 
 class GoogleLogin(APIView):

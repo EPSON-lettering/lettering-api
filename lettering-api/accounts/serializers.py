@@ -16,9 +16,6 @@ class NicknameCheckSerializer(serializers.Serializer):
         if not re.match(r'^[가-힣A-Za-z0-9_]+$', value):
             raise serializers.ValidationError("문자 또는 숫자, 특수문자(_)만 가능합니다.")
 
-        if '#' in value:
-            raise serializers.ValidationError("특수문자(#)는 사용할 수 없습니다.")
-
         return value
 
 
