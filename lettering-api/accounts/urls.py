@@ -30,4 +30,5 @@ urlpatterns = [
     path('user/details/', UserDetails.as_view(), name='user_info'),
     path('languages/', LanguageListView.as_view(), name='language_list'),
     path('nickname/', views.NicknameView.as_view(), name='nickname'),
+    path('match/check/', views.CheckUserHasMatchView.as_view(), name='check user has match')
 ]

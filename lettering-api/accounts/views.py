@@ -6,6 +6,8 @@ from django.conf import settings
 from rest_framework.response import Response
 from rest_framework import status
 from .models import User, Language
+from django.db.models import Q
+from matching.models import Match
 from oauth.models import OauthUser
 from interests.models import UserInterest, Interest
 from .serializers import UserSerializer
@@ -34,8 +36,8 @@ class NicknameView(APIView):
     def get(self, request):
         serializer = NicknameCheckSerializer(data=request.query_params)
         if serializer.is_valid():
-            return Response({ "available": True }, status=status.HTTP_200_OK)
-        return Response({ "available": False, "error": serializer.errors['nickname'][0] }, status=status.HTTP_200_OK)
+            return Response({"available": True}, status=status.HTTP_200_OK)
+        return Response({"available": False, "error": serializer.errors['nickname'][0]}, status=status.HTTP_200_OK)
 
     @swagger_auto_schema(
         operation_summary="닉네임 변경",
@@ -208,9 +210,27 @@ class UserDetails(APIView):
         operation_summary="사용자 정보 불러오기",
         responses={200: UserSerializer()}
     )
-    def get(self,request):
+    def get(self, request):
         user_interests = UserInterest.objects.filter(user=request.user)
         interests = [user_interest.interest for user_interest in user_interests]
         serializers = UserSerializer(request.user, interests=interests)
 
         return Response(serializers.data, status=status.HTTP_200_OK)
+
+
+class CheckUserHasMatchView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    @swagger_auto_schema(
+        operation_summary="사용자 매칭 상태 조회",
+        responses={200: MatchStatusSerializer}
+    )
+    def get(self, req):
+        user = req.user
+        match = Match.objects.filter(
+            Q(requester=user) | Q(acceptor=user) & Q(withdraw_reason__isnull=True)
+        )
+        print(f'match: {match}')
+        if match.exists() is False:
+            return Response({"isMatch": False})
+        return Response({"isMatch": True})

@@ -24,6 +24,7 @@ INSTALLED_APPS = [
     'letters',
     'matching',
     'notifications',
+    'printers',
     'oauth',
     'storages',
     'allauth',
