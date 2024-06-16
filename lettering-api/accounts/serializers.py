@@ -93,3 +93,7 @@ class LanguageSerializer(serializers.ModelSerializer):
 
 class GoogleCallbackSerializer(serializers.Serializer):
     code = serializers.CharField(required=True)
+
+
+class MatchStatusSerializer(serializers.Serializer):
+    isMatch = serializers.BooleanField()
