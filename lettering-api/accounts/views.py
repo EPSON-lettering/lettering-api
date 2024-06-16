@@ -11,6 +11,7 @@ from interests.models import UserInterest, Interest
 from .serializers import UserSerializer
 from rest_framework.permissions import IsAuthenticated, AllowAny
 from rest_framework_simplejwt.tokens import RefreshToken
+from drf_yasg import openapi
 
 # 구글 소셜로그인 변수 설정
 BASE_URL = settings.BASE_URL
@@ -168,11 +169,24 @@ class Logout(APIView):
 
     @swagger_auto_schema(
         operation_summary="로그아웃",
-        responses={200: "Success"}
+        request_body=openapi.Schema(
+            type=openapi.TYPE_OBJECT,
+            properties={
+                'refresh': openapi.Schema(type=openapi.TYPE_STRING)
+            },
+            required=['refresh']
+        ),
+        responses={205: "Success", 400: "Error message"}
     )
     def post(self, request):
-        request.session.flush()
-        return Response(status=status.HTTP_200_OK)
+        try:
+            refresh_token = request.data.get('refresh')
+            token = RefreshToken(refresh_token)
+            token.blacklist()
+
+            return Response(status=status.HTTP_205_RESET_CONTENT)
+        except Exception as e:
+            return Response({"detail": str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
 
 class LanguageListView(APIView):
