@@ -1,12 +1,24 @@
 from django.db import models
 from accounts.models import User, Language
 
+class MatchRequest(models.Model):
+    requester = models.ForeignKey(User, related_name='sent_match_requests', on_delete=models.CASCADE)
+    receiver = models.ForeignKey(User, related_name='received_match_requests', on_delete=models.CASCADE)
+    state = models.BooleanField(default=False)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"Request from {self.requester.nickname} to {self.receiver.nickname}"
+
 
 class Match(models.Model):
     requester = models.ForeignKey(User, related_name='requested_matches', on_delete=models.CASCADE)
     acceptor = models.ForeignKey(User, related_name='accepted_matches', on_delete=models.CASCADE)
-    state = models.BooleanField()
+    state = models.BooleanField(default=True)
     native_lang = models.ForeignKey(Language, related_name='native_matches', on_delete=models.CASCADE)
     learning_lang = models.ForeignKey(Language, related_name='learning_matches', on_delete=models.CASCADE)
     created_at = models.DateTimeField(auto_now_add=True)
-    withdraw_reason = models.TextField(null=True)
+    withdraw_reason = models.TextField(null=True, blank=True)
+
+    def __str__(self):
+        return f"Match between {self.requester.nickname} and {self.acceptor.nickname}"
