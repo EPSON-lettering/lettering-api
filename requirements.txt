@@ -14,3 +14,4 @@ PyJWT
 gunicorn
 cryptography
 django-cors-headers
+requests
