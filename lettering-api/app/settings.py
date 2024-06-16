@@ -31,7 +31,6 @@ INSTALLED_APPS = [
     'allauth.socialaccount',
     'allauth.socialaccount.providers.google',
     'corsheaders',
-    'django.contrib.sites',
 ]
 
 MIDDLEWARE = [
@@ -99,8 +98,6 @@ SIMPLE_JWT = {
     'AUTH_HEADER_TYPES': ('Bearer',),
     'AUTH_TOKEN_CLASSES': ('rest_framework_simplejwt.tokens.AccessToken',),
 }
-
-SITE_ID = 1
 
 AUTH_PASSWORD_VALIDATORS = [
     {
