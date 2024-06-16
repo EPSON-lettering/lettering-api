@@ -117,7 +117,6 @@ class EpsonPrintConnectAPI(APIView):
 
         if res.status != HTTPStatus.OK:
             return Response({'error': f'{res.status}:{res.reason}'}, status=status.HTTP_400_BAD_REQUEST)
-        return Response("id 및 url 생성 완료")
 # 파일 출력
 
         print_uri = f'https://{HOST}/api/1/printing/printers/{subject_id}/jobs/{job_id}/print'
