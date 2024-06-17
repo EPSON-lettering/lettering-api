@@ -40,7 +40,7 @@ class MatchSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Match
-        fields = ['requester', 'acceptor', 'state', 'nativeLang', 'learningLang', 'createdAt', 'withdrawReason']
+        fields = ['id', 'requester', 'acceptor', 'state', 'nativeLang', 'learningLang', 'createdAt', 'withdrawReason']
 
 
 class SearchMatchDetailsSerializer(serializers.ModelSerializer):
