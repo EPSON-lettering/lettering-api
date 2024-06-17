@@ -12,4 +12,4 @@ class EpsonConnectEmail(models.Model):
 
 class EpsonConnectScanData(models.Model):
     user = models.OneToOneField(User, on_delete=models.CASCADE)
-    imagefile = models.ImageField(upload_to='EpsonScanData/')
+    imagefile = models.ImageField(upload_to='letters/')
