@@ -1,5 +1,6 @@
 from http import HTTPStatus
 
+import boto3
 from botocore.exceptions import ClientError
 from drf_yasg.utils import swagger_auto_schema
 from rest_framework import status, serializers
@@ -208,3 +209,32 @@ class ScannerDestinationsView(APIView):
                 return Response("스캔 대상 추가에 성공했습니다!", status=status.HTTP_200_OK)
             except requests.exceptions.RequestException as e:
                 return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
+
+class FileUploadView(APIView):
+    def post(self, request):
+        serializer = EpsonScanSerializer(data=request.data)
+        if serializer.is_valid():
+            # 파일 업로드
+            for file in request.FILES.values():
+                self.upload_to_s3(file)
+            serializer.save(user=request.user)
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+    def upload_to_s3(self,file):
+        s3 = boto3.client(
+            's3',
+            aws_access_key_id=os.environ.get('AWS_ACCESS_KEY_ID'),
+            aws_secret_access_key=os.environ.get('AWS_SECRET_ACCESS_KEY'),
+        )
+        try:
+            s3.upload_fileobj(
+                file,
+                os.environ.get('AWS_BUCKET_NAME'),
+                file.name
+            )
+        except ClientError  as e:
+            print(f"Error uploading file to S3: {e}")
+            return False
+        return True
+
