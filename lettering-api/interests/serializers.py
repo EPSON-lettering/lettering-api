@@ -45,4 +45,4 @@ class UserInterestChangeSerializer(serializers.Serializer):
 class QuestionSerializer(serializers.ModelSerializer):
     class Meta:
         model = Question
-        fields = ['id', 'text']
+        fields = ['id', 'text', 'engText']
