@@ -109,8 +109,13 @@ class MatchRequestView(APIView):
             match_request.state = True
             match_request.save()
 
-            exists_match = Match.objects.get(requester=match_request.requester, acceptor=match_request.receiver)
-            if exists_match is None:
+            exists_match = Match.objects.filter(
+                requester=match_request.requester,
+                acceptor=match_request.receiver,
+                withdraw_reason__isnull=True
+            ).first()
+            print(f'exists_match: {exists_match}')
+            if exists_match is not None:
                 return Response({"message": "이미 매칭된 사용자입니다."}, status=status.HTTP_400_BAD_REQUEST)
 
             match = Match.objects.create(
@@ -120,6 +125,7 @@ class MatchRequestView(APIView):
                 learning_lang=match_request.receiver.language,
                 state=True
             )
+            match_request.delete()
             serializer = MatchSerializer(match)
             return Response(serializer.data, status=status.HTTP_200_OK)
         elif action == 'reject':
