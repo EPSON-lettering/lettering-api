@@ -229,3 +229,35 @@ class QuestionView(APIView):
 
         serializer = QuestionSerializer(question)
         return Response(serializer.data, status=status.HTTP_200_OK)
+
+class EndMatchView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    @swagger_auto_schema(
+        operation_summary="매칭 끊기",
+        request_body=openapi.Schema(
+            type=openapi.TYPE_OBJECT,
+            properties={
+                'reason': openapi.Schema(type=openapi.TYPE_STRING, description='매칭 끊는 이유'),
+            },
+            required=['reason']
+        ),
+        responses={
+            200: openapi.Response(description="매칭 끊기 성공", schema=MatchSerializer),
+            404: openapi.Response(description="매칭 조회 실패"),
+            401: openapi.Response(description="Unauthorized")
+        }
+    )
+    def post(self, request, match_id):
+        reason = request.data.get('reason')
+        if not reason:
+            return Response({"detail": "Reason is required."}, status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            match = Match.objects.get(id=match_id, requester=request.user)
+        except Match.DoesNotExist:
+            return Response({"detail": "Match not found."}, status=status.HTTP_404_NOT_FOUND)
+
+        match.end_match(reason)
+        serializer = MatchSerializer(match)
+        return Response(serializer.data, status=status.HTTP_200_OK)

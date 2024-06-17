@@ -22,8 +22,12 @@ class Match(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     withdraw_reason = models.TextField(null=True, blank=True)
     provided_questions = models.ManyToManyField(Question, related_name='match_questions', blank=True)
-    current_question = models.ForeignKey(Question, related_name='current_match', on_delete=models.SET_NULL, null=True, blank=True)
-
+    current_question = models.ForeignKey(Question, related_name='current_match', null=True, blank=True, on_delete=models.SET_NULL)
 
     def __str__(self):
         return f"Match between {self.requester.nickname} and {self.acceptor.nickname}"
+
+    def end_match(self, reason):
+        self.state = False
+        self.withdraw_reason = reason
+        self.save()
