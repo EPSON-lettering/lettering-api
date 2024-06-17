@@ -2,12 +2,14 @@ from rest_framework import serializers
 from .models import MatchRequest, Match
 from accounts.models import User
 
+
 class MatchUserSerializer(serializers.ModelSerializer):
     profileImageUrl = serializers.CharField(source='profile_image_url')
 
     class Meta:
         model = User
         fields = ['id', 'nickname', 'profileImageUrl', 'language']
+
 
 class MatchRequestSerializer(serializers.ModelSerializer):
     requester = MatchUserSerializer()
@@ -17,6 +19,7 @@ class MatchRequestSerializer(serializers.ModelSerializer):
     class Meta:
         model = MatchRequest
         fields = ['id', 'requester', 'receiver', 'state', 'createdAt']
+
 
 class MatchSerializer(serializers.ModelSerializer):
     requester = MatchUserSerializer()
@@ -29,3 +32,12 @@ class MatchSerializer(serializers.ModelSerializer):
     class Meta:
         model = Match
         fields = ['requester', 'acceptor', 'state', 'nativeLang', 'learningLang', 'createdAt', 'withdrawReason']
+
+
+class SearchMatchDetailsSerializer(serializers.ModelSerializer):
+    acceptor = MatchUserSerializer()
+    createdAt = serializers.DateTimeField(source='created_at')
+
+    class Meta:
+        model = Match
+        fields = ['id', 'acceptor', 'createdAt']

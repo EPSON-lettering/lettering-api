@@ -6,7 +6,8 @@ from drf_yasg.utils import swagger_auto_schema
 from drf_yasg import openapi
 
 from .models import Match, User, MatchRequest
-from .serializers import MatchSerializer, MatchRequestSerializer, MatchUserSerializer
+from .serializers import MatchSerializer, MatchRequestSerializer, MatchUserSerializer, SearchMatchDetailsSerializer
+
 
 class MatchView(APIView):
     permission_classes = [IsAuthenticated]
@@ -63,13 +64,15 @@ class MatchView(APIView):
         else:
             return Response({"detail": "No suitable match found"}, status=status.HTTP_404_NOT_FOUND)
 
+
 class MatchRequestView(APIView):
     permission_classes = [IsAuthenticated]
 
     @swagger_auto_schema(
         operation_summary="매칭 수락 또는 거절",
         manual_parameters=[
-            openapi.Parameter('action', openapi.IN_PATH, description="Action to perform ('accept' or 'reject')", type=openapi.TYPE_STRING)
+            openapi.Parameter('action', openapi.IN_PATH, description="Action to perform ('accept' or 'reject')",
+                              type=openapi.TYPE_STRING)
         ],
         responses={
             200: openapi.Response('Match request accepted or rejected', MatchSerializer),
@@ -80,7 +83,8 @@ class MatchRequestView(APIView):
     )
     def post(self, request, request_id, action):
         if not request.user.is_authenticated:
-            return Response({"detail": "Authentication credentials were not provided."}, status=status.HTTP_401_UNAUTHORIZED)
+            return Response({"detail": "Authentication credentials were not provided."},
+                            status=status.HTTP_401_UNAUTHORIZED)
 
         try:
             match_request = MatchRequest.objects.get(id=request_id, requester=request.user)
@@ -105,3 +109,26 @@ class MatchRequestView(APIView):
             return Response({"detail": "Match request rejected"}, status=status.HTTP_200_OK)
         else:
             return Response({"detail": "Invalid action"}, status=status.HTTP_400_BAD_REQUEST)
+
+
+class GetMatchDetailsView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    @swagger_auto_schema(
+        operation_summary="현재 매칭 정보 조회",
+        responses={
+            200: openapi.Response('매칭 결과', SearchMatchDetailsSerializer),
+        }
+    )
+    def get(self, req):
+        user: User = req.user
+        match = (Match.objects
+                 .filter(requester=user, withdraw_reason__isnull=True)
+                 .order_by("-created_at")
+                 .first()
+                 )
+        serial = SearchMatchDetailsSerializer(match)
+        print(f'match: {serial}')
+        if match is None:
+            return Response({"matchDetails": None})
+        return Response({"matchDetails": serial.data})
