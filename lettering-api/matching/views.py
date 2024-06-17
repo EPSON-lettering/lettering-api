@@ -109,6 +109,10 @@ class MatchRequestView(APIView):
             match_request.state = True
             match_request.save()
 
+            exists_match = Match.objects.get(requester=match_request.requester, acceptor=match_request.receiver)
+            if exists_match is None:
+                return Response({"message": "이미 매칭된 사용자입니다."}, status=status.HTTP_400_BAD_REQUEST)
+
             match = Match.objects.create(
                 requester=match_request.requester,
                 acceptor=match_request.receiver,
@@ -169,6 +173,7 @@ class GetMatchingListView(APIView):
                    .order_by("-created_at")
                    )
         return Response(MatchSerializer(matches, many=True).data, status=200)
+
 
 class QuestionView(APIView):
     permission_classes = [IsAuthenticated]
