@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import Interest, UserInterest
+from .models import Interest, UserInterest, Question
 from accounts.models import User
 
 
@@ -40,3 +40,8 @@ class UserInterestChangeSerializer(serializers.Serializer):
             except Interest.DoesNotExist:
                 continue
         return user
+
+class QuestionSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Question
+        fields = ['id', 'text']

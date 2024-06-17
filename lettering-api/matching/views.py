@@ -10,6 +10,7 @@ from .models import Match, User, MatchRequest
 from .serializers import MatchSerializer, MatchRequestSerializer, MatchUserSerializer, SearchMatchDetailsSerializer, \
     IntegrateSearchMatchDetailsSerializer
 from .services import CommonInterest
+from interests.serializers import QuestionSerializer
 
 
 def get_interests(user):
@@ -167,3 +168,69 @@ class GetMatchingListView(APIView):
                    .order_by("-created_at")
                    )
         return Response(MatchSerializer(matches, many=True).data, status=200)
+
+class QuestionView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    @swagger_auto_schema(
+        operation_summary="질문 제공",
+        manual_parameters=[
+            openapi.Parameter('match_id', openapi.IN_PATH, description="Match ID", type=openapi.TYPE_INTEGER)
+        ],
+        responses={
+            200: openapi.Response(description="질문 제공 성공", schema=QuestionSerializer),
+            404: openapi.Response(description="매칭 조회 실패 또는 더 이상 제공할 질문이 없음"),
+            401: openapi.Response(description="Unauthorized")
+        }
+    )
+    def get(self, request, match_id):
+        try:
+            match = Match.objects.get(id=match_id, requester=request.user)
+        except Match.DoesNotExist:
+            return Response({"detail": "Match not found."}, status=status.HTTP_404_NOT_FOUND)
+
+        requester_interests = match.requester.userinterest_set.values_list('interest', flat=True)
+        acceptor_interests = match.acceptor.userinterest_set.values_list('interest', flat=True)
+        common_interests = set(requester_interests) & set(acceptor_interests)
+
+        # 이전에 제공된 질문 제외하고 공통 관심사 기반 질문 선택
+        previous_questions = match.provided_questions.all()
+        questions = Question.objects.filter(interest__in=common_interests).exclude(id__in=previous_questions)
+
+        if not questions.exists():
+            return Response({"detail": "No more questions available."}, status=status.HTTP_404_NOT_FOUND)
+
+        question = random.choice(questions)
+        match.provided_questions.add(question)
+        match.current_question = question
+        match.save()
+
+        serializer = QuestionSerializer(question)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
+
+class CurrentQuestionView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    @swagger_auto_schema(
+        operation_summary="현재 질문 조회",
+        manual_parameters=[
+            openapi.Parameter('match_id', openapi.IN_PATH, description="Match ID", type=openapi.TYPE_INTEGER)
+        ],
+        responses={
+            200: openapi.Response(description="현재 질문 조회 성공", schema=QuestionSerializer),
+            404: openapi.Response(description="매칭 또는 질문 조회 실패"),
+            401: openapi.Response(description="Unauthorized")
+        }
+    )
+    def get(self, request, match_id):
+        try:
+            match = Match.objects.get(id=match_id, requester=request.user)
+        except Match.DoesNotExist:
+            return Response({"detail": "Match not found."}, status=status.HTTP_404_NOT_FOUND)
+
+        if not match.current_question:
+            return Response({"detail": "No current question found for this match."}, status=status.HTTP_404_NOT_FOUND)
+
+        serializer = QuestionSerializer(match.current_question)
+        return Response(serializer.data, status=status.HTTP_200_OK)

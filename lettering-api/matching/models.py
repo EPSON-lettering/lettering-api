@@ -1,5 +1,6 @@
 from django.db import models
 from accounts.models import User, Language
+from interests.models import Question
 
 
 class MatchRequest(models.Model):
@@ -20,6 +21,9 @@ class Match(models.Model):
     learning_lang = models.ForeignKey(Language, related_name='learning_matches', on_delete=models.CASCADE)
     created_at = models.DateTimeField(auto_now_add=True)
     withdraw_reason = models.TextField(null=True, blank=True)
+    provided_questions = models.ManyToManyField(Question, related_name='match_questions', blank=True)
+    current_question = models.ForeignKey(Question, related_name='current_match', on_delete=models.SET_NULL, null=True, blank=True)
+
 
     def __str__(self):
         return f"Match between {self.requester.nickname} and {self.acceptor.nickname}"
