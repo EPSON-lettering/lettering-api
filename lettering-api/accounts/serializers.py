@@ -82,7 +82,6 @@ class UserSerializer(serializers.ModelSerializer):
         data = list(self.interests)
         print(f'data: {data}')
         return [InterestSerializer(interest).data for interest in self.interests]
-        # return InterestSerializer(data, many=True).data
 
 
 class LanguageSerializer(serializers.ModelSerializer):

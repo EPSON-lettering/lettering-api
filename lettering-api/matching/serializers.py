@@ -1,6 +1,7 @@
 from rest_framework import serializers
 from .models import MatchRequest, Match
 from accounts.models import User
+from interests.serializers import InterestSerializer
 
 
 class MatchUserSerializer(serializers.ModelSerializer):
@@ -41,3 +42,21 @@ class SearchMatchDetailsSerializer(serializers.ModelSerializer):
     class Meta:
         model = Match
         fields = ['id', 'acceptor', 'createdAt']
+
+
+class IntegrateSearchMatchDetailsSerializer(serializers.ModelSerializer):
+    interests = serializers.SerializerMethodField()
+    acceptor = MatchUserSerializer()
+    createdAt = serializers.DateTimeField(source='created_at')
+
+    class Meta:
+        model = Match
+        fields = ['id', 'acceptor', 'createdAt', 'interests']
+
+    def __init__(self, *args, **kwargs):
+        self.interests = kwargs.pop('interests', [])
+        self.match_details = kwargs.pop('match_details', None)
+        super().__init__(*args, **kwargs)
+
+    def get_interests(self, obj):
+        return [InterestSerializer(interest).data for interest in self.interests]

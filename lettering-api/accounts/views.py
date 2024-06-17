@@ -30,7 +30,7 @@ class NicknameView(APIView):
 
     @swagger_auto_schema(
         operation_summary="닉네임 유효성 검사",
-        query_serializer=NicknameCheckSerializer,
+        query_serializer=NicknameCheckSerializer(),
         responses={200: "available: boolean, error: string"}
     )
     def get(self, request):
@@ -223,7 +223,7 @@ class CheckUserHasMatchView(APIView):
 
     @swagger_auto_schema(
         operation_summary="사용자 매칭 상태 조회",
-        responses={200: MatchStatusSerializer}
+        responses={200: MatchStatusSerializer()}
     )
     def get(self, req):
         user = req.user

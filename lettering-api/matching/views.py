@@ -5,8 +5,9 @@ from rest_framework.permissions import IsAuthenticated, AllowAny
 from drf_yasg.utils import swagger_auto_schema
 from drf_yasg import openapi
 
+from interests.models import UserInterest, Interest
 from .models import Match, User, MatchRequest
-from .serializers import MatchSerializer, MatchRequestSerializer, MatchUserSerializer, SearchMatchDetailsSerializer
+from .serializers import MatchSerializer, MatchRequestSerializer, MatchUserSerializer, SearchMatchDetailsSerializer, IntegrateSearchMatchDetailsSerializer
 
 
 class MatchView(APIView):
@@ -117,7 +118,7 @@ class GetMatchDetailsView(APIView):
     @swagger_auto_schema(
         operation_summary="현재 매칭 정보 조회",
         responses={
-            200: openapi.Response('매칭 결과', SearchMatchDetailsSerializer),
+            200: openapi.Response('매칭 결과', IntegrateSearchMatchDetailsSerializer()),
         }
     )
     def get(self, req):
@@ -127,8 +128,13 @@ class GetMatchDetailsView(APIView):
                  .order_by("-created_at")
                  .first()
                  )
-        serial = SearchMatchDetailsSerializer(match)
-        print(f'match: {serial}')
+
         if match is None:
-            return Response({"matchDetails": None})
-        return Response({"matchDetails": serial.data})
+            return Response(None)
+        acceptor_id = match.acceptor.id
+        acceptor = User.objects.get(id=acceptor_id)
+        user_interests = UserInterest.objects.filter(user=acceptor)
+        interests = [user_interest.interest for user_interest in user_interests]
+        result = IntegrateSearchMatchDetailsSerializer(match, interests=interests)
+        print(f'result(serial): {result}')
+        return Response(result.data, status=status.HTTP_200_OK)
