@@ -7,7 +7,8 @@ from drf_yasg import openapi
 
 from interests.models import UserInterest, Interest
 from .models import Match, User, MatchRequest
-from .serializers import MatchSerializer, MatchRequestSerializer, MatchUserSerializer, SearchMatchDetailsSerializer, IntegrateSearchMatchDetailsSerializer
+from .serializers import MatchSerializer, MatchRequestSerializer, MatchUserSerializer, SearchMatchDetailsSerializer, \
+    IntegrateSearchMatchDetailsSerializer
 from .services import CommonInterest
 
 
@@ -148,3 +149,21 @@ class GetMatchDetailsView(APIView):
         result = IntegrateSearchMatchDetailsSerializer(match, interests=interests)
         print(f'result(serial): {result}')
         return Response(result.data, status=status.HTTP_200_OK)
+
+
+class GetMatchingListView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    @swagger_auto_schema(
+        operation_summary="매칭 정보 리스트 조회",
+        responses={
+            200: openapi.Response('매칭 결과', MatchSerializer(many=True)),
+        }
+    )
+    def get(self, req):
+        user: User = req.user
+        matches = (Match.objects
+                   .filter(requester=user, withdraw_reason__isnull=True)
+                   .order_by("-created_at")
+                   )
+        return Response(MatchSerializer(matches, many=True).data, status=200)
