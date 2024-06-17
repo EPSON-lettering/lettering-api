@@ -65,13 +65,14 @@ class UserSerializer(serializers.ModelSerializer):
     isLoggined = serializers.BooleanField(source='is_loggined', read_only=True)
     withdrawReason = serializers.CharField(source='withdraw_reason', read_only=True)
     interests = serializers.SerializerMethodField()
+    epsonEmail = serializers.EmailField(source='epson_email')
 
     class Meta:
         model = User
         fields = [
             'id', 'oauthId', 'nickname', 'profileImageUrl',
             'createdAt', 'withdrawAt', 'language', 'printerStatus',
-            'isLoggined', 'withdrawReason', 'email', 'interests'
+            'isLoggined', 'withdrawReason', 'email', 'interests', 'epsonEmail'
         ]
 
     def __init__(self, *args, **kwargs):
