@@ -16,17 +16,17 @@ class MatchRequestSerializer(serializers.ModelSerializer):
     requester = MatchUserSerializer()
     receiver = MatchUserSerializer()
     createdAt = serializers.DateTimeField(source='created_at')
-    duplicate_interests = serializers.SerializerMethodField()
+    duplicateInterests = serializers.SerializerMethodField()
 
     class Meta:
         model = MatchRequest
-        fields = ['id', 'requester', 'receiver', 'state', 'createdAt', 'duplicate_interests']
+        fields = ['id', 'requester', 'receiver', 'state', 'createdAt', 'duplicateInterests']
 
     def __init__(self, *args, **kwargs):
         self.interests = kwargs.pop('interests', [])
         super().__init__(*args, **kwargs)
 
-    def get_duplicate_interests(self, obj):
+    def get_duplicateInterests(self, obj):
         return [InterestSerializer(interest).data for interest in self.interests]
 
 
