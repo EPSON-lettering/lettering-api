@@ -228,7 +228,7 @@ class CheckUserHasMatchView(APIView):
     def get(self, req):
         user = req.user
         match = Match.objects.filter(
-            Q(requester=user) | Q(acceptor=user) & Q(withdraw_reason__isnull=True)
+            (Q(requester=user) & Q(withdraw_reason__isnull=True)) | (Q(acceptor=user) & Q(withdraw_reason__isnull=True))
         )
         print(f'match: {match}')
         if match.exists() is False:
