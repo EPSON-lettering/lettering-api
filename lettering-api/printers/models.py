@@ -8,3 +8,8 @@ class EpsonConnectEmail(models.Model):
 
     def __str__(self):
         return self.deviceEmail
+
+
+class EpsonConnectScanData(models.Model):
+    user = models.OneToOneField(User, on_delete=models.CASCADE)
+    imagefile = models.ImageField(upload_to='EpsonScanData/')

@@ -1,5 +1,6 @@
 from http import HTTPStatus
 
+from botocore.exceptions import ClientError
 from drf_yasg.utils import swagger_auto_schema
 from rest_framework import status, serializers
 from rest_framework.parsers import MultiPartParser, FormParser
@@ -7,7 +8,7 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.utils import json
 from rest_framework.views import APIView
-from .serializers import EpsonConnectPrintSerializer, EpsonConnectAuthSerializer
+from .serializers import EpsonConnectPrintSerializer, EpsonConnectAuthSerializer, EpsonScanSerializer
 from urllib import request, parse, error
 from .models import EpsonConnectEmail
 from drf_yasg import openapi
@@ -36,7 +37,6 @@ class EpsonPrintConnectAPI(APIView):
         auth_uri = EPSON_URL
         auth = base64.b64encode((CLIENT_ID + ':' + SECRET).encode()).decode()
 
-
         query_param = {
             'grant_type': 'password',
             'username': device,
@@ -63,7 +63,7 @@ class EpsonPrintConnectAPI(APIView):
         auth_data = json.loads(body)
         subject_id = auth_data.get('subject_id')
         access_token = auth_data.get('access_token')
-# 프린트에게 전달할 id 및 Url 생성
+        # 프린트에게 전달할 id 및 Url 생성
 
         job_uri = f'https://{HOST}/api/1/printing/printers/{subject_id}/jobs'
 
@@ -117,7 +117,7 @@ class EpsonPrintConnectAPI(APIView):
 
         if res.status != HTTPStatus.OK:
             return Response({'error': f'{res.status}:{res.reason}'}, status=status.HTTP_400_BAD_REQUEST)
-# 파일 출력
+        # 파일 출력
 
         print_uri = f'https://{HOST}/api/1/printing/printers/{subject_id}/jobs/{job_id}/print'
         data = ''
@@ -142,39 +142,69 @@ class EpsonPrintConnectAPI(APIView):
         return Response({'message': "프린트가 성공적으로 완료되었습니다"}, status=status.HTTP_200_OK)
 
 
-class EpsonConnectAuthView(APIView):
-    permission_classes = [IsAuthenticated]
-
+class ScannerDestinationsView(APIView):
+    permission_classes = []
     @swagger_auto_schema(
-        operation_summary="앱손 프린터",
+        operation_summary="앱손 프린터 스캔",
+        request_body=EpsonConnectPrintSerializer,
         responses={200: "available: boolean, error: string"}
     )
-    def get(self, request):
-        auths = EpsonConnectEmail.objects.filter(user=request.user)
-        serializer = EpsonConnectAuthSerializer(auths, many=True)
-        return Response(serializer.data, status=status.HTTP_200_OK)
+    def post(self, request_data):
+        host = HOST
+        accept = ACCEPT
+        auth_uri = EPSON_URL
+        client_id = CLIENT_ID
+        secret = SECRET
+        device = request_data.data['deviceEmail']
+        auth = base64.b64encode(f'{client_id}:{secret}'.encode()).decode()
 
-    def post(self, requset):
-        userEmail = EpsonConnectEmail.objects.filter(user=request.user)
-        if not userEmail:
-            return Response("이메일을 등록 하셔야합니다!")
+        data = {
+            'grant_type': 'password',
+            'username': device,
+            'password': ''
+        }
 
+        headers = {
+            'Host': host,
+            'Accept': accept,
+            'Authorization': f'Basic {auth}',
+            'Content-Type': 'application/x-www-form-urlencoded; charset=utf-8'
+        }
+        try:
+            response = requests.post(auth_uri, data=data, headers=headers)
+            response.raise_for_status()
+            auth_result = response.json()
+        except requests.exceptions.RequestException as e:
+            return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
+        subject_id = auth_result['subject_id']
+        access_token = auth_result['access_token']
+        add_uri = f'https://{host}/api/1/scanning/scanners/{subject_id}/destinations'
 
-class UserEpsonConnectView(APIView):
-    def post(self, request):
-        email = request.data.get('email')
-        if email:
-            user = request.user  # 현재 로그인한 사용자
+        if requests.get(add_uri).status_code != 200:
+            data_param = {
+                'alias_name': 'send',
+                'type': 'url',
+                'destination': os.environ.get('EPSON_SCAN_DIRECTION'),
+            }
+            data = json.dumps(data_param)
+
+            headers = {
+                'Host': host,
+                'Accept': accept,
+                'Authorization': f'Bearer {access_token}',
+                'Content-Length': str(len(data)),
+                'Content-Type': 'application/json;charset=utf-8'
+            }
+
             try:
-                obj, created = EpsonConnectEmail.objects.get_or_create(
-                    user=user, deviceEmail=email
-                )
-                if created:
-                    serializer = EpsonConnectAuthSerializer(obj)
-                    return Response(serializer.data, status=status.HTTP_201_CREATED)
-                else:
-                    return Response({'error': 'Email already exists'}, status=status.HTTP_400_BAD_REQUEST)
-            except Exception as e:
+                response = requests.post(add_uri, data=data, headers=headers, verify=False)
+                response.raise_for_status()
+                add_result = {
+                    'Response': {
+                        'Header': dict(response.headers),
+                        'Body': response.json()
+                    }
+                }
+                return Response("스캔 대상 추가에 성공했습니다!", status=status.HTTP_200_OK)
+            except requests.exceptions.RequestException as e:
                 return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
-        else:
-            return Response({'error': '이메일이 필요합니다'}, status=status.HTTP_400_BAD_REQUEST)
