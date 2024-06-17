@@ -4,8 +4,9 @@ from rest_framework import status
 from rest_framework.permissions import IsAuthenticated, AllowAny
 from drf_yasg.utils import swagger_auto_schema
 from drf_yasg import openapi
+import random
 
-from interests.models import UserInterest, Interest
+from interests.models import UserInterest, Interest, Question
 from .models import Match, User, MatchRequest
 from .serializers import MatchSerializer, MatchRequestSerializer, MatchUserSerializer, SearchMatchDetailsSerializer, \
     IntegrateSearchMatchDetailsSerializer
@@ -229,6 +230,7 @@ class QuestionView(APIView):
 
         serializer = QuestionSerializer(question)
         return Response(serializer.data, status=status.HTTP_200_OK)
+
 
 class EndMatchView(APIView):
     permission_classes = [IsAuthenticated]
