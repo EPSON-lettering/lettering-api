@@ -20,7 +20,7 @@ class User(AbstractBaseUser):
     created_at = models.DateTimeField(auto_now_add=True)
     withdraw_at = models.DateTimeField(null=True)
     language = models.ForeignKey(Language, on_delete=models.CASCADE)
-    printer_status = models.BooleanField(default=False)
+    epson_email: str = models.EmailField(null=True)
     is_loggined = models.BooleanField(default=False)
     withdraw_reason = models.TextField(null=True)
     email = models.EmailField()
