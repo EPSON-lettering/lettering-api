@@ -41,6 +41,7 @@ class UserInterestChangeSerializer(serializers.Serializer):
                 continue
         return user
 
+
 class QuestionSerializer(serializers.ModelSerializer):
     class Meta:
         model = Question
