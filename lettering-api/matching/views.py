@@ -8,6 +8,12 @@ from drf_yasg import openapi
 from interests.models import UserInterest, Interest
 from .models import Match, User, MatchRequest
 from .serializers import MatchSerializer, MatchRequestSerializer, MatchUserSerializer, SearchMatchDetailsSerializer, IntegrateSearchMatchDetailsSerializer
+from .services import CommonInterest
+
+
+def get_interests(user):
+    user_interests = UserInterest.objects.filter(user=user)
+    return [user_interest.interest for user_interest in user_interests]
 
 
 class MatchView(APIView):
@@ -60,7 +66,11 @@ class MatchView(APIView):
                 requester=user,
                 receiver=best_match
             )
-            serializer = MatchRequestSerializer(match_request)
+            requester_interests = get_interests(user)
+            receiver_interests = get_interests(best_match)
+
+            duplicate_interest = CommonInterest(patt=requester_interests, matt=receiver_interests).calculate()
+            serializer = MatchRequestSerializer(match_request, interests=duplicate_interest)
             return Response(serializer.data, status=status.HTTP_201_CREATED)
         else:
             return Response({"detail": "No suitable match found"}, status=status.HTTP_404_NOT_FOUND)
