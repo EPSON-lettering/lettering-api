@@ -203,7 +203,7 @@ class LanguageListView(APIView):
         return Response(serializer.data, status=status.HTTP_200_OK)
 
 
-class UserDetails(APIView):
+class UserView(APIView):
     permission_classes = [IsAuthenticated]
 
     @swagger_auto_schema(
@@ -216,6 +216,20 @@ class UserDetails(APIView):
         serializers = UserSerializer(request.user, interests=interests)
 
         return Response(serializers.data, status=status.HTTP_200_OK)
+
+    @swagger_auto_schema(
+        operation_summary="회원 탈퇴",
+        responses={204: "회원 탈퇴 성공", 400: "회원 탈퇴 실패"}
+    )
+    def delete(self, request):
+        try:
+            user = request.user
+            oauth_user = user.oauth
+            if oauth_user:
+                oauth_user.delete()
+            return Response(status=status.HTTP_204_NO_CONTENT)
+        except Exception as e:
+            return Response({"detail": str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
 
 class CheckUserHasMatchView(APIView):
