@@ -8,6 +8,7 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.utils import json
 from rest_framework.views import APIView
+from notifications.models import Notification
 from .serializers import EpsonConnectPrintSerializer, EpsonConnectAuthSerializer, EpsonScanSerializer, \
     EpsonConnectEmailSerializer
 from urllib import request, parse, error
@@ -31,7 +32,8 @@ class EpsonPrintConnectAPI(APIView):
     def post(self, request_data):
 
         device = request_data.data['deviceEmail']
-        file = request_data.FILES
+        file = request_data.FILES.get('file')
+        letter_id = request_data.data.get('letter_id')
         # 1. Authentication
         auth_uri = EPSON_URL
         auth = base64.b64encode((CLIENT_ID + ':' + SECRET).encode()).decode()
@@ -138,6 +140,16 @@ class EpsonPrintConnectAPI(APIView):
         if res.status != HTTPStatus.OK:
             return Response({'error': f'{res.status}:{res.reason}'}, status=status.HTTP_400_BAD_REQUEST)
 
+        try:
+            letter = Letter.objects.get(id=letter_id)
+        except Letter.DoesNotExist:
+            return Response({'error': 'Letter not found'}, status=status.HTTP_404_NOT_FOUND)
+
+        Notification.objects.create(
+            letter=letter,
+            message=f'{user.nickname} 님이 편지를 작성 중입니다.',
+            is_read=False
+        )
         return Response({'message': "프린트가 성공적으로 완료되었습니다"}, status=status.HTTP_200_OK)
 
 

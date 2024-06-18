@@ -5,6 +5,7 @@ from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
 from rest_framework import status
 from .models import Letter
+from notifications.models import Notification
 from .serializers import LetterSerializer
 
 
@@ -31,7 +32,14 @@ class LetterAPIView(APIView):
     def post(self, request):
         serializer = LetterSerializer(data=request.data)
         if serializer.is_valid():
-            serializer.save()
+            letter = serializer.save()
+
+            Notification.objects.create(
+                letter=letter,
+                message=f'{request.user.nickname} 님의 편지가 도착했습니다.',
+                is_read=False,
+                type='received'
+            )
             return Response(serializer.data, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
