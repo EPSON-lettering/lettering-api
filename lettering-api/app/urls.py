@@ -12,5 +12,6 @@ urlpatterns = [
     path('account/', include("accounts.urls")),
     path('interest/', include("interests.urls")),
     path('match/', include("matching.urls")),
-    path('printer/' , include("printers.urls")),
+    path('printer/', include("printers.urls")),
+    path('letter/', include("letters.urls"))
 ]

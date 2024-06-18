@@ -3,16 +3,14 @@ from http import HTTPStatus
 import boto3
 from botocore.exceptions import ClientError
 from drf_yasg.utils import swagger_auto_schema
-from rest_framework import status, serializers
-from rest_framework.parsers import MultiPartParser, FormParser
+from rest_framework import status
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.utils import json
 from rest_framework.views import APIView
-from .serializers import EpsonConnectPrintSerializer, EpsonConnectAuthSerializer, EpsonScanSerializer
+from .serializers import EpsonConnectPrintSerializer, EpsonConnectAuthSerializer, EpsonScanSerializer, \
+    EpsonConnectEmailSerializer
 from urllib import request, parse, error
-from .models import EpsonConnectEmail
-from drf_yasg import openapi
 import base64
 import requests
 import os
@@ -145,6 +143,7 @@ class EpsonPrintConnectAPI(APIView):
 
 class ScannerDestinationsView(APIView):
     permission_classes = []
+
     @swagger_auto_schema(
         operation_summary="앱손 프린터 스캔",
         request_body=EpsonConnectPrintSerializer,
@@ -210,6 +209,7 @@ class ScannerDestinationsView(APIView):
             except requests.exceptions.RequestException as e:
                 return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
+
 class FileUploadView(APIView):
     def post(self, request):
         serializer = EpsonScanSerializer(data=request.data)
@@ -221,7 +221,7 @@ class FileUploadView(APIView):
             return Response(serializer.data, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
-    def upload_to_s3(self,file):
+    def upload_to_s3(self, file):
         s3 = boto3.client(
             's3',
             aws_access_key_id=os.environ.get('AWS_ACCESS_KEY_ID'),
@@ -231,10 +231,52 @@ class FileUploadView(APIView):
             s3.upload_fileobj(
                 file,
                 os.environ.get('AWS_BUCKET_NAME'),
-                file.name
+                file.user
             )
-        except ClientError  as e:
+        except ClientError as e:
             print(f"Error uploading file to S3: {e}")
             return False
         return True
 
+
+class EpsonConnectEmailAPIView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    @swagger_auto_schema(
+        operation_summary="앱손 이메일 연결 확인",
+        request_body=EpsonConnectEmailSerializer,
+        responses={200: "available: boolean, error: string"}
+    )
+    def post(self, request_data):
+        device = request_data.data['epsonEmail']
+        user = request_data.user
+        # 인증
+        auth_uri = EPSON_URL
+        auth = base64.b64encode((CLIENT_ID + ':' + SECRET).encode()).decode()
+
+        query_param = {
+            'grant_type': 'password',
+            'username': device,
+            'password': ''
+        }
+        query_string = parse.urlencode(query_param)
+
+        headers = {
+            'Authorization': 'Basic ' + auth,
+            'Content-Type': 'application/x-www-form-urlencoded; charset=utf-8'
+        }
+
+        try:
+            req = request.Request(auth_uri, data=query_string.encode('utf-8'), headers=headers, method='POST')
+            with request.urlopen(req) as res:
+                body = res.read()
+        except error.HTTPError as err:
+            return Response({'error': f'{err.code}:{err.reason}:{str(err.read())}'}, status=status.HTTP_400_BAD_REQUEST)
+        except error.URLError as err:
+            return Response({'error': err.reason}, status=status.HTTP_400_BAD_REQUEST)
+        if res.status != HTTPStatus.OK:
+            return Response({'error': f'{res.status}:{res.reason}'}, status=status.HTTP_400_BAD_REQUEST)
+        serializer = EpsonConnectEmailSerializer(data=request_data.data, context={'request': request, 'user': user})
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
+        return Response("생성이 완료되었습니다", status=status.HTTP_201_CREATED)
