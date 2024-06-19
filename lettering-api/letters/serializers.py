@@ -4,9 +4,9 @@ from .models import Letter
 
 class LetterSerializer(serializers.ModelSerializer):
     imageUrl = serializers.ImageField(source='image_url')
-    isRead = serializers.BooleanField()
+    isRead = serializers.BooleanField(default=False)
     createdAt = serializers.DateTimeField(source='created_at')
 
     class Meta:
         model = Letter
-        fields = ['id', 'receiver', 'sender', 'imageUrl', 'isRead', 'createdAt']
+        fields = ['receiver', 'sender', 'imageUrl', 'isRead', 'createdAt']
