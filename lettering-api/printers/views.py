@@ -283,7 +283,6 @@ class EpsonConnectEmailAPIView(APIView):
         # 인증
         auth_uri = EPSON_URL
         auth = base64.b64encode((CLIENT_ID + ':' + SECRET).encode()).decode()
-        context = {"verify": False}
 
         query_param = {
             'grant_type': 'password',

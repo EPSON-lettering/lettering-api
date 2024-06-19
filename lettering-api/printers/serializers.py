@@ -8,7 +8,7 @@ import base64
 
 
 class EpsonConnectPrintSerializer(serializers.Serializer):
-    imageFile = serializers.FileField()
+    imageFile = serializers.ImageField(required=True)
 
 
 class EpsonScanSerializer(serializers.ModelSerializer):
@@ -25,6 +25,6 @@ class EpsonConnectEmailSerializer(serializers.Serializer):
 
     def create(self, validated_data):
         user = self.context['request'].user
-        user.epson_email = validated_data["epsonEmail"]
+        user.epson_email = validated_data['epson_email']
         user.save()
         return user
