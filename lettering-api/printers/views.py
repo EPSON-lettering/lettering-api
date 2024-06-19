@@ -1,4 +1,5 @@
 from http import HTTPStatus
+from ssl import SSLCertVerificationError
 
 import boto3
 from botocore.exceptions import ClientError
@@ -10,8 +11,7 @@ from rest_framework.response import Response
 from rest_framework.utils import json
 from rest_framework.views import APIView
 from notifications.models import Notification
-from .serializers import EpsonConnectPrintSerializer, EpsonConnectAuthSerializer, EpsonScanSerializer, \
-    EpsonConnectEmailSerializer
+from .serializers import EpsonConnectPrintSerializer, EpsonScanSerializer,EpsonConnectEmailSerializer
 from urllib import request, parse, error
 import base64
 import requests
@@ -279,6 +279,7 @@ class EpsonConnectEmailAPIView(APIView):
     def post(self, request_data):
         device = request_data.data['epsonEmail']
         user = request_data.user
+        serializer = EpsonConnectEmailSerializer(data=request_data.data, context={'request': request_data})
         # 인증
         auth_uri = EPSON_URL
         auth = base64.b64encode((CLIENT_ID + ':' + SECRET).encode()).decode()
@@ -304,9 +305,11 @@ class EpsonConnectEmailAPIView(APIView):
             return Response({'error': f'{err.code}:{err.reason}:{str(err.read())}'}, status=status.HTTP_400_BAD_REQUEST)
         except error.URLError as err:
             return Response({'error': err.reason}, status=status.HTTP_400_BAD_REQUEST)
+        except SSLCertVerificationError as err:
+            return Response({'error': str(err)}, status=status.HTTP_400_BAD_REQUEST)
         if res.status != HTTPStatus.OK:
             return Response({'error': f'{res.status}:{res.reason}'}, status=status.HTTP_400_BAD_REQUEST)
-        serializer = EpsonConnectEmailSerializer(data=request_data.data, context={'request': request, 'user': user})
-        serializer.is_valid(raise_exception=True)
-        serializer.save()
-        return Response({"success":"생성이 완료되었습니다"}, status=status.HTTP_201_CREATED)
+        if serializer.is_valid():
+            serializer.save()
+            return Response({"message : 연결이 완료 되었습니다!"}, status=status.HTTP_201_CREATED)
+        return Response({"message":serializer.is_valid()}, status=status.HTTP_400_BAD_REQUEST)
