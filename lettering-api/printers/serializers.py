@@ -1,24 +1,14 @@
 from django.core.files import File
 from rest_framework import serializers
-from .models import EpsonConnectEmail, EpsonConnectScanData
+from rest_framework.fields import empty
+
+from .models import EpsonConnectScanData
 from accounts.models import User
 import base64
 
 
 class EpsonConnectPrintSerializer(serializers.Serializer):
-    imageFile = serializers.ImageField()
-    deviceEmail = serializers.CharField()
-
-
-class EpsonConnectAuthSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = EpsonConnectEmail
-        fields = '__all__'
-
-    def create(self, request):
-        user = User.objects.get(id=request.user)
-        device_email = request['deviceEmail']
-        return EpsonConnectEmail.objects.create(user=user, deviceEmail=device_email)
+    imageFile = serializers.FileField()
 
 
 class EpsonScanSerializer(serializers.ModelSerializer):
@@ -27,23 +17,14 @@ class EpsonScanSerializer(serializers.ModelSerializer):
         fields = '__all__'
 
 
-class EpsonConnectEmailSerializer(serializers.ModelSerializer):
-    epsonEmail = serializers.CharField(write_only=True)
+class EpsonConnectEmailSerializer(serializers.Serializer):
+    epsonEmail = serializers.CharField(source='epson_email')
 
-    class Meta:
-        model = EpsonConnectEmail
-        fields = ['epsonEmail']
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
 
     def create(self, validated_data):
-        user = self.context['user']
-        user = User.objects.get(id=user)
-        epson_email = validated_data['epsonEmail']
-
-        try:
-            epson_connect_email = EpsonConnectEmail.objects.get(user=user)
-            epson_connect_email.epsonEmail = epson_email
-            epson_connect_email.save()
-        except EpsonConnectEmail.DoesNotExist:
-            epson_connect_email = EpsonConnectEmail.objects.create(user=user, epsonEmail=epson_email)
-
-        return epson_connect_email
+        user = self.context['request'].user
+        user.epson_email = validated_data["epsonEmail"]
+        user.save()
+        return user
