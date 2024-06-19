@@ -312,4 +312,4 @@ class EpsonConnectEmailAPIView(APIView):
         if serializer.is_valid():
             serializer.save()
             return Response({"message : 연결이 완료 되었습니다!"}, status=status.HTTP_201_CREATED)
-        return Response({"message":serializer.is_valid()}, status=status.HTTP_400_BAD_REQUEST)
+        return Response({"error : 잘못된 요청입니다!"}, status=status.HTTP_400_BAD_REQUEST)
