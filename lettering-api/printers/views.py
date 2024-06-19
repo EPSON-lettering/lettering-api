@@ -2,6 +2,7 @@ from http import HTTPStatus
 
 import boto3
 from botocore.exceptions import ClientError
+from drf_yasg import openapi
 from drf_yasg.utils import swagger_auto_schema
 from rest_framework import status
 from rest_framework.permissions import IsAuthenticated
@@ -27,7 +28,21 @@ class EpsonPrintConnectAPI(APIView):
     permission_classes = [IsAuthenticated]
 
     @swagger_auto_schema(
-        request_body=EpsonConnectPrintSerializer,
+        operation_summary="Epson 프린터에 파일 출력하기",
+        request_body=openapi.Schema(
+            type=openapi.TYPE_OBJECT,
+            properties={
+                'file': openapi.Schema(type=openapi.TYPE_FILE, description='출력할 파일'),
+                'letter_id': openapi.Schema(type=openapi.TYPE_INTEGER, description='편지 ID'),
+            },
+            required=['deviceEmail', 'file', 'letter_id']
+        ),
+        responses={
+            status.HTTP_200_OK: openapi.Response('프린트 성공'),
+            status.HTTP_400_BAD_REQUEST: openapi.Response('프린트 실패'),
+            status.HTTP_404_NOT_FOUND: openapi.Response('편지 찾을 수 없음'),
+            status.HTTP_405_METHOD_NOT_ALLOWED: openapi.Response('API호출 불가, 아직 파일이 업로드되기 전')
+        }
     )
     def post(self, request_data):
 
@@ -217,7 +232,7 @@ class ScannerDestinationsView(APIView):
                         'Body': response.json()
                     }
                 }
-                return Response("스캔 대상 추가에 성공했습니다!", status=status.HTTP_200_OK)
+                return Response({"success:"스캔 대상 추가에 성공했습니다!"}, status=status.HTTP_200_OK)
             except requests.exceptions.RequestException as e:
                 return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
@@ -265,6 +280,7 @@ class EpsonConnectEmailAPIView(APIView):
         # 인증
         auth_uri = EPSON_URL
         auth = base64.b64encode((CLIENT_ID + ':' + SECRET).encode()).decode()
+        context = {"verify": False}
 
         query_param = {
             'grant_type': 'password',
@@ -291,4 +307,4 @@ class EpsonConnectEmailAPIView(APIView):
         serializer = EpsonConnectEmailSerializer(data=request_data.data, context={'request': request, 'user': user})
         serializer.is_valid(raise_exception=True)
         serializer.save()
-        return Response("생성이 완료되었습니다", status=status.HTTP_201_CREATED)
+        return Response({"success":"생성이 완료되었습니다"}, status=status.HTTP_201_CREATED)
