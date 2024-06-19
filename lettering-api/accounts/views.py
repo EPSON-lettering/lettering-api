@@ -14,6 +14,7 @@ from .serializers import UserSerializer
 from rest_framework.permissions import IsAuthenticated, AllowAny
 from rest_framework_simplejwt.tokens import RefreshToken
 from drf_yasg import openapi
+import urllib.parse
 
 # 구글 소셜로그인 변수 설정
 BASE_URL = settings.BASE_URL
@@ -91,11 +92,12 @@ class GoogleCallback(APIView):
         if not code:
             return Response({'error': 'No code provided'}, status=status.HTTP_400_BAD_REQUEST)
 
+        decoded_code = urllib.parse.unquote(code)
         token_url = 'https://oauth2.googleapis.com/token'
         token_params = {
             'client_id': settings.GOOGLE_CLIENT_ID,
             'client_secret': settings.GOOGLE_CLIENT_SECRET,
-            'code': code,
+            'code': decoded_code,
             'redirect_uri': GOOGLE_CALLBACK_URI,
             'grant_type': 'authorization_code',
         }
