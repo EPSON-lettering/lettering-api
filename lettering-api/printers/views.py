@@ -232,7 +232,7 @@ class ScannerDestinationsView(APIView):
                         'Body': response.json()
                     }
                 }
-                return Response({"success:"스캔 대상 추가에 성공했습니다!"}, status=status.HTTP_200_OK)
+                return Response({"success":"스캔 대상 추가에 성공했습니다!"}, status=status.HTTP_200_OK)
             except requests.exceptions.RequestException as e:
                 return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
