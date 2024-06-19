@@ -35,6 +35,7 @@ class LetterAPIView(APIView):
             letter = serializer.save()
 
             Notification.objects.create(
+                user=letter.receiver,
                 letter=letter,
                 message=f'{request.user.nickname} 님의 편지가 도착했습니다.',
                 is_read=False,

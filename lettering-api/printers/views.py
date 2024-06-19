@@ -161,9 +161,11 @@ class EpsonPrintConnectAPI(APIView):
             return Response({'error': 'Letter not found'}, status=status.HTTP_404_NOT_FOUND)
 
         Notification.objects.create(
+            user=letter.receiver,
             letter=letter,
-            message=f'{user.nickname} 님이 편지를 작성 중입니다.',
-            is_read=False
+            message=f'{request.user.nickname} 님이 편지를 작성 중입니다!',
+            is_read=False,
+            type='print_started'
         )
         return Response({'message': "프린트가 성공적으로 완료되었습니다"}, status=status.HTTP_200_OK)
 
@@ -232,7 +234,7 @@ class ScannerDestinationsView(APIView):
                         'Body': response.json()
                     }
                 }
-                return Response({"success:"스캔 대상 추가에 성공했습니다!"}, status=status.HTTP_200_OK)
+                return Response({"success:스캔 대상 추가에 성공했습니다!"}, status=status.HTTP_200_OK)
             except requests.exceptions.RequestException as e:
                 return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
 

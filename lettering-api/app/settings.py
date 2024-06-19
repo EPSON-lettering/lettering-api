@@ -26,6 +26,7 @@ INSTALLED_APPS = [
     'notifications',
     'printers',
     'oauth',
+    'comments',
     'storages',
     'allauth',
     'allauth.account',
