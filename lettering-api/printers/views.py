@@ -10,8 +10,9 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.utils import json
 from rest_framework.views import APIView
+from rest_framework.parsers import MultiPartParser, FormParser
 from notifications.models import Notification
-from .serializers import EpsonConnectPrintSerializer, EpsonScanSerializer,EpsonConnectEmailSerializer
+from .serializers import EpsonConnectPrintSerializer, EpsonScanSerializer, EpsonConnectEmailSerializer
 from urllib import request, parse, error
 import base64
 import requests
@@ -26,29 +27,27 @@ ACCEPT = os.environ.get('EPSON_ACCEPT')
 
 class EpsonPrintConnectAPI(APIView):
     permission_classes = [IsAuthenticated]
+    parser_classes = (MultiPartParser, FormParser)
 
     @swagger_auto_schema(
         operation_summary="Epson 프린터에 파일 출력하기",
-        request_body=openapi.Schema(
-            type=openapi.TYPE_OBJECT,
-            properties={
-                'file': openapi.Schema(type=openapi.TYPE_FILE, description='출력할 파일'),
-                'letter_id': openapi.Schema(type=openapi.TYPE_INTEGER, description='편지 ID'),
-            },
-            required=['deviceEmail', 'file', 'letter_id']
-        ),
+        manual_parameters=[
+            openapi.Parameter('deviceEmail', openapi.IN_FORM, type=openapi.TYPE_STRING, description='디바이스 이메일'),
+            openapi.Parameter('letter_id', openapi.IN_FORM, type=openapi.TYPE_INTEGER, description='편지 ID'),
+            openapi.Parameter('file', openapi.IN_FORM, type=openapi.TYPE_FILE, description='출력할 파일')
+        ],
         responses={
             status.HTTP_200_OK: openapi.Response('프린트 성공'),
             status.HTTP_400_BAD_REQUEST: openapi.Response('프린트 실패'),
             status.HTTP_404_NOT_FOUND: openapi.Response('편지 찾을 수 없음'),
-            status.HTTP_405_METHOD_NOT_ALLOWED: openapi.Response('API호출 불가, 아직 파일이 업로드되기 전')
+            status.HTTP_405_METHOD_NOT_ALLOWED: openapi.Response('API 호출 불가, 아직 파일이 업로드되기 전')
         }
     )
-    def post(self, request_data):
+    def post(self, request):
+        device = request.data['deviceEmail']
+        file = request.FILES.get('file')
+        letter_id = request.data.get('letter_id')
 
-        device = request_data.data['deviceEmail']
-        file = request_data.FILES.get('file')
-        letter_id = request_data.data.get('letter_id')
         # 1. Authentication
         auth_uri = EPSON_URL
         auth = base64.b64encode((CLIENT_ID + ':' + SECRET).encode()).decode()
@@ -76,11 +75,12 @@ class EpsonPrintConnectAPI(APIView):
 
         if res.status != HTTPStatus.OK:
             return Response({'error': f'{res.status}:{res.reason}'}, status=status.HTTP_400_BAD_REQUEST)
+
         auth_data = json.loads(body)
         subject_id = auth_data.get('subject_id')
         access_token = auth_data.get('access_token')
-        # 프린트에게 전달할 id 및 Url 생성
 
+        # 프린터에게 전달할 id 및 Url 생성
         job_uri = f'https://{HOST}/api/1/printing/printers/{subject_id}/jobs'
 
         data_param = {
@@ -105,25 +105,25 @@ class EpsonPrintConnectAPI(APIView):
 
         if res.status != HTTPStatus.CREATED:
             return Response({'error': f'{res.status}:{res.reason}'}, status=status.HTTP_400_BAD_REQUEST)
-        job_data = json.loads(body)
 
+        job_data = json.loads(body)
         job_id = job_data.get('id')
         base_uri = job_data.get('upload_uri')
 
-        # 프린트 파일  업로드
-        local_file_path = file.name
+        # 프린터 파일 업로드
+        local_file_path = file.temporary_file_path() if hasattr(file, 'temporary_file_path') else file.name
         _, ext = os.path.splitext(local_file_path)
         file_name = '1' + ext
         upload_uri = base_uri + '&File=' + file_name
 
         headers = {
-            'Content-Length': str(os.path.getsize(local_file_path)),
+            'Content-Length': str(file.size),
             'Content-Type': 'application/octet-stream'
         }
 
         try:
-            with open(local_file_path, 'rb') as f:
-                req = request.Request(upload_uri, data=f, headers=headers, method='POST')
+            with file.open('rb') as f:
+                req = request.Request(upload_uri, data=f.read(), headers=headers, method='POST')
                 with request.urlopen(req) as res:
                     body = res.read()
         except error.HTTPError as err:
@@ -133,8 +133,8 @@ class EpsonPrintConnectAPI(APIView):
 
         if res.status != HTTPStatus.OK:
             return Response({'error': f'{res.status}:{res.reason}'}, status=status.HTTP_400_BAD_REQUEST)
-        # 파일 출력
 
+        # 파일 출력
         print_uri = f'https://{HOST}/api/1/printing/printers/{subject_id}/jobs/{job_id}/print'
         data = ''
 
