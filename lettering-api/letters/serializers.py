@@ -9,4 +9,4 @@ class LetterSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Letter
-        fields = ['receiver', 'sender', 'imageUrl', 'isRead', 'createdAt']
+        fields = ['id','receiver', 'sender', 'imageUrl', 'isRead', 'createdAt']

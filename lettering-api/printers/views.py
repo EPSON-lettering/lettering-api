@@ -1,5 +1,7 @@
 from http import HTTPStatus
 from ssl import SSLCertVerificationError
+
+import boto3
 from drf_yasg import openapi
 from drf_yasg.utils import swagger_auto_schema
 from rest_framework import status
@@ -12,6 +14,7 @@ from notifications.models import Notification
 from .serializers import EpsonConnectPrintSerializer, EpsonScanSerializer, EpsonConnectEmailSerializer
 from urllib import request, parse, error
 import base64, requests, os
+from PIL import Image
 from letters.models import Letter
 
 EPSON_URL = os.environ.get('EPSON_URL')
@@ -29,7 +32,6 @@ class EpsonLetterIdPrintConnectAPI(APIView):
         operation_summary="Epson 프린터에 파일 출력하기",
         manual_parameters=[
             openapi.Parameter('letter_id', openapi.IN_FORM, type=openapi.TYPE_INTEGER, description='편지 ID'),
-            openapi.Parameter('file', openapi.IN_FORM, type=openapi.TYPE_FILE, description='출력할 파일')
         ],
         responses={
             status.HTTP_200_OK: openapi.Response('프린트 성공'),
@@ -38,11 +40,17 @@ class EpsonLetterIdPrintConnectAPI(APIView):
             status.HTTP_405_METHOD_NOT_ALLOWED: openapi.Response('API호출 불가, 아직 파일이 업로드되기 전')
         }
     )
-    def post(self, request_data):
-        letter_id = request_data.data.get('letter_id')
+    def post(self, request_data, letter_id):
         letter = Letter.objects.get(id=letter_id)
         device = letter.receiver.epson_email
-        file = request_data.FILES.get('file')
+        image_url = letter.image_url
+        s3 = boto3.resource('s3')
+        bucket = s3.Bucket(os.environ.get('AWS_STORAGE_BUCKET_NAME'))
+        obj = bucket.Object(image_url)
+        response = obj.get()
+        file_stream = response['Body']
+        file = Image.open(file_stream)
+
         # 1. Authentication
         auth_uri = EPSON_URL
         auth = base64.b64encode((CLIENT_ID + ':' + SECRET).encode()).decode()

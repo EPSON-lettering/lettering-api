@@ -49,9 +49,9 @@ class LetterAPIView(APIView):
     )
     def get(self, request):
         user = request.user
-        letters = Letter.objects.filter(Q(sender=user) | Q(receiver=user)).all()
+        letters = Letter.objects.filter(Q(sender=user) or Q(receiver=user) ).all().order_by('-created_at')
         serializer = LetterSerializer(letters, many=True)
-        return Response(serializer.data , status=status.HTTP_200_OK)
+        return Response(serializer.data, status=status.HTTP_200_OK)
 
     @swagger_auto_schema(
         operation_summary="편지 추가",
