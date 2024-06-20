@@ -3,6 +3,7 @@ from drf_yasg import openapi
 from drf_yasg.views import get_schema_view
 from django.urls import path
 from .views import *
+from badges.views import *
 from rest_framework.permissions import AllowAny
 
 from . import views
@@ -28,6 +29,7 @@ urlpatterns = [
     path('register/', RegisterUser.as_view(), name='register_user'),
     path('logout/', Logout.as_view(), name='logout'),
     path('', UserView.as_view(), name='user'),
+    path('badges/', UserBadgeAPIView.as_view(), name='user_badges'),
     path('languages/', LanguageListView.as_view(), name='language_list'),
     path('nickname/', views.NicknameView.as_view(), name='nickname'),
     path('match/check/', views.CheckUserHasMatchView.as_view(), name='check user has match')

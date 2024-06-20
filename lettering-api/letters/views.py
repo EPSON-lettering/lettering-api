@@ -73,7 +73,7 @@ class LetterAPIView(APIView):
                 is_read=False,
                 type='received'
             )
-
+            self.award_badge(letter.sender, '편지의 제왕')
             letter.sender.status_message = '편지를 전송하였습니다!'
             letter.sender.save()
             letter.receiver.status_message = '편지를 수령하였습니다!'
@@ -81,6 +81,20 @@ class LetterAPIView(APIView):
 
             return Response(serializer.data, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+    def award_badge(self, user, badge_name):
+        badge = Badge.objects.get(name=badge_name)
+        user_badge, created = UserBadge.objects.get_or_create(
+            user=user,
+            badge=badge,
+            step=badge.steps.order_by('step_number').first()
+        )
+        user_badge.progress += 1
+        if user_badge.progress >= user_badge.step.required_count:
+            user_badge.step = badge.steps.filter(step_number=user_badge.step.step_number + 1).first()
+            user_badge.progress = 0
+        user_badge.save()
 
     @swagger_auto_schema(
         operation_summary="편지 삭제",

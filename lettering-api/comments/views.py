@@ -31,9 +31,26 @@ class CommentAPIView(APIView):
         data['letter'] = letter_id
         serializer = CommentSerializer(data=data, context={'request': request})
         if serializer.is_valid():
-            serializer.save(sender=request.user)
+            comment = serializer.save()
+            if comment.type == 'feedback':
+                self.award_badge(comment.sender, '피드백 마스터')
             return Response(serializer.data, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+    def award_badge(self, user, badge_name):
+        badge = Badge.objects.get(name=badge_name)
+        user_badge, created = UserBadge.objects.get_or_create(
+            user=user,
+            badge=badge,
+            step=badge.steps.order_by('step_number').first()
+        )
+        user_badge.progress += 1
+        if user_badge.progress >= user_badge.step.required_count:
+            user_badge.step = badge.steps.filter(step_number=user_badge.step.step_number + 1).first()
+            user_badge.progress = 0
+        user_badge.save()
+
+
 
 class ReplyAPIView(APIView):
     permission_classes = [IsAuthenticated]

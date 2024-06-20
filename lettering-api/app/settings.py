@@ -27,6 +27,7 @@ INSTALLED_APPS = [
     'printers',
     'oauth',
     'comments',
+    'badges',
     'storages',
     'allauth',
     'allauth.account',
