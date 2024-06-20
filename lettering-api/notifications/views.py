@@ -19,6 +19,10 @@ class NotificationAPIView(APIView):
         serializer = NotificationSerializer(notifications, many=True)
         return Response(serializer.data, status=status.HTTP_200_OK)
 
+
+class NotificationDetailAPIView(APIView):
+    permission_classes = [IsAuthenticated]
+
     @swagger_auto_schema(
         operation_summary="알림 읽음 처리",
         responses={200: "알림 읽음 처리 완료", 404: "알림을 찾을 수 없음"}
