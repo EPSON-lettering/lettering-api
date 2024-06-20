@@ -161,6 +161,11 @@ class EpsonLetterIdPrintConnectAPI(APIView):
             is_read=False,
             type='print_started'
         )
+
+        user = request.user
+        user.status_message = '편지를 작성 중입니다!'
+        user.save()
+
         return Response({'message': "프린트가 성공적으로 완료되었습니다"}, status=status.HTTP_200_OK)
 
 

@@ -73,6 +73,12 @@ class LetterAPIView(APIView):
                 is_read=False,
                 type='received'
             )
+
+            letter.sender.status_message = '편지를 전송하였습니다!'
+            letter.sender.save()
+            letter.receiver.status_message = '편지를 수령하였습니다!'
+            letter.receiver.save()
+
             return Response(serializer.data, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
@@ -80,8 +86,8 @@ class LetterAPIView(APIView):
         operation_summary="편지 삭제",
         request_body=LetterSerializer,
         responses={
-            status.HTTP_201_CREATED: LetterSerializer,
-            status.HTTP_400_BAD_REQUEST: '편지를 찾을수없습니다.'
+            status.HTTP_204_NO_CONTENT: '삭제 완료',
+            status.HTTP_400_BAD_REQUEST: '편지를 찾을 수 없습니다.'
         })
     def delete(self, request):
         user = request.user
