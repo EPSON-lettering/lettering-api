@@ -171,11 +171,10 @@ class EpsonPrintConnectAPI(APIView):
 
 
 class ScannerDestinationsView(APIView):
-    permission_classes = []
+    permission_classes = [IsAuthenticated]
 
     @swagger_auto_schema(
-        operation_summary="앱손 프린터 스캔",
-        request_body=EpsonConnectPrintSerializer,
+        operation_summary="앱손 프린터 스캔 대상 추가",
         responses={200: "available: boolean, error: string"}
     )
     def post(self, request_data):
@@ -184,7 +183,7 @@ class ScannerDestinationsView(APIView):
         auth_uri = EPSON_URL
         client_id = CLIENT_ID
         secret = SECRET
-        device = request_data.data['deviceEmail']
+        device = request_data.user.epson_email
         auth = base64.b64encode(f'{client_id}:{secret}'.encode()).decode()
 
         data = {
@@ -211,9 +210,9 @@ class ScannerDestinationsView(APIView):
 
         if requests.get(add_uri).status_code != 200:
             data_param = {
-                'alias_name': 'send',
+                'alias_name': 'lettering',
                 'type': 'url',
-                'destination': os.environ.get('EPSON_SCAN_DIRECTION'),
+                'destination': f'{os.environ.get("EPSON_SCAN_DIRECTION")}/{request_data.user.username}',
             }
             data = json.dumps(data_param)
 
@@ -228,44 +227,52 @@ class ScannerDestinationsView(APIView):
             try:
                 response = requests.post(add_uri, data=data, headers=headers, verify=False)
                 response.raise_for_status()
-                add_result = {
-                    'Response': {
-                        'Header': dict(response.headers),
-                        'Body': response.json()
-                    }
-                }
                 return Response({"success:스캔 대상 추가에 성공했습니다!"}, status=status.HTTP_200_OK)
             except requests.exceptions.RequestException as e:
                 return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
 
 class FileUploadView(APIView):
-    def post(self, request):
-        serializer = EpsonScanSerializer(data=request.data)
+    permission_classes = [IsAuthenticated]
+    parser_classes = [JSONParser, FormParser, MultiPartParser]
+    parser_classes = (MultiPartParser, FormParser)
+    @swagger_auto_schema(
+        operation_summary="유저가 스캐너가 없을 때 사진 업로드 후 보내기",
+        manual_parameters=[
+            openapi.Parameter('imagefile', openapi.IN_FORM, type=openapi.TYPE_FILE, description='저장할 파일')
+        ],
+        responses={
+            status.HTTP_201_CREATED: openapi.Response('message: 전송이 완료되었습니다'),
+            status.HTTP_400_BAD_REQUEST: openapi.Response('매칭 정보를 찾을 수 없습니다'),
+            status.HTTP_400_BAD_REQUEST: openapi.Response('편지 저장에 실패했습니다.'),
+        }
+    )
+    def post(self, request ):
+        serializer = EpsonScanSerializer(data=request.data, context={'request': request})
         if serializer.is_valid():
-            # 파일 업로드
-            for file in request.FILES.values():
-                self.upload_to_s3(file)
-            serializer.save(user=request.user)
-            return Response(serializer.data, status=status.HTTP_201_CREATED)
+            serializer.save()
+            return Response({"message": "다운로드가 완료되었습니다."}, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
-    def upload_to_s3(self, file):
-        s3 = boto3.client(
-            's3',
-            aws_access_key_id=os.environ.get('AWS_ACCESS_KEY_ID'),
-            aws_secret_access_key=os.environ.get('AWS_SECRET_ACCESS_KEY'),
-        )
-        try:
-            s3.upload_fileobj(
-                file,
-                os.environ.get('AWS_BUCKET_NAME'),
-                file.user
-            )
-        except ClientError as e:
-            print(f"Error uploading file to S3: {e}")
-            return False
-        return True
+
+class ToEpsonFileUploadView(APIView):
+    permission_classes = [IsAuthenticated]
+    parser_classes = [JSONParser, FormParser, MultiPartParser]
+    parser_classes = (MultiPartParser, FormParser)
+    @swagger_auto_schema(
+        operation_summary="Epson 프린터 스캔 후 보내기",
+        responses={
+            status.HTTP_201_CREATED: openapi.Response('message: 전송이 완료되었습니다'),
+            status.HTTP_400_BAD_REQUEST: openapi.Response('매칭 정보를 찾을 수 없습니다'),
+            status.HTTP_400_BAD_REQUEST: openapi.Response('편지 저장에 실패했습니다.'),
+        }
+    )
+    def post(self, request , username):
+        serializer = EpsonScanSerializer(data=request.data, context={'request': request})
+        if serializer.is_valid():
+            serializer.save()
+            return Response({"message: 전송이 완료되었습니다"}, status=status.HTTP_201_CREATED)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
 class EpsonConnectEmailAPIView(APIView):
@@ -274,7 +281,10 @@ class EpsonConnectEmailAPIView(APIView):
     @swagger_auto_schema(
         operation_summary="앱손 이메일 연결 확인",
         request_body=EpsonConnectEmailSerializer,
-        responses={200: "available: boolean, error: string"}
+        responses={
+            status.HTTP_200_OK: 'message : 연결이 완료 되었습니다!',
+            status.HTTP_400_BAD_REQUEST: 'error : 잘못된 요청입니다!',
+        }
     )
     def post(self, request_data):
         device = request_data.data['epsonEmail']
