@@ -1,22 +1,18 @@
 from http import HTTPStatus
 from ssl import SSLCertVerificationError
-
-import boto3
-from botocore.exceptions import ClientError
 from drf_yasg import openapi
 from drf_yasg.utils import swagger_auto_schema
 from rest_framework import status
+from rest_framework.parsers import JSONParser, FormParser, MultiPartParser
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.utils import json
 from rest_framework.views import APIView
-from rest_framework.parsers import MultiPartParser, FormParser
 from notifications.models import Notification
 from .serializers import EpsonConnectPrintSerializer, EpsonScanSerializer, EpsonConnectEmailSerializer
 from urllib import request, parse, error
-import base64
-import requests
-import os
+import base64, requests, os
+from letters.models import Letter
 
 EPSON_URL = os.environ.get('EPSON_URL')
 CLIENT_ID = os.environ.get('EPSON_CLIENT_ID')
@@ -25,14 +21,13 @@ HOST = os.environ.get('EPSON_HOST')
 ACCEPT = os.environ.get('EPSON_ACCEPT')
 
 
-class EpsonPrintConnectAPI(APIView):
+class EpsonLetterIdPrintConnectAPI(APIView):
     permission_classes = [IsAuthenticated]
     parser_classes = (MultiPartParser, FormParser)
 
     @swagger_auto_schema(
         operation_summary="Epson 프린터에 파일 출력하기",
         manual_parameters=[
-            openapi.Parameter('deviceEmail', openapi.IN_FORM, type=openapi.TYPE_STRING, description='디바이스 이메일'),
             openapi.Parameter('letter_id', openapi.IN_FORM, type=openapi.TYPE_INTEGER, description='편지 ID'),
             openapi.Parameter('file', openapi.IN_FORM, type=openapi.TYPE_FILE, description='출력할 파일')
         ],
@@ -40,14 +35,14 @@ class EpsonPrintConnectAPI(APIView):
             status.HTTP_200_OK: openapi.Response('프린트 성공'),
             status.HTTP_400_BAD_REQUEST: openapi.Response('프린트 실패'),
             status.HTTP_404_NOT_FOUND: openapi.Response('편지 찾을 수 없음'),
-            status.HTTP_405_METHOD_NOT_ALLOWED: openapi.Response('API 호출 불가, 아직 파일이 업로드되기 전')
+            status.HTTP_405_METHOD_NOT_ALLOWED: openapi.Response('API호출 불가, 아직 파일이 업로드되기 전')
         }
     )
-    def post(self, request):
-        device = request.data['deviceEmail']
-        file = request.FILES.get('file')
-        letter_id = request.data.get('letter_id')
-
+    def post(self, request_data):
+        letter_id = request_data.data.get('letter_id')
+        letter = Letter.objects.get(id=letter_id)
+        device = letter.receiver.epson_email
+        file = request_data.FILES.get('file')
         # 1. Authentication
         auth_uri = EPSON_URL
         auth = base64.b64encode((CLIENT_ID + ':' + SECRET).encode()).decode()
@@ -75,12 +70,11 @@ class EpsonPrintConnectAPI(APIView):
 
         if res.status != HTTPStatus.OK:
             return Response({'error': f'{res.status}:{res.reason}'}, status=status.HTTP_400_BAD_REQUEST)
-
         auth_data = json.loads(body)
         subject_id = auth_data.get('subject_id')
         access_token = auth_data.get('access_token')
+        # 프린트에게 전달할 id 및 Url 생성
 
-        # 프린터에게 전달할 id 및 Url 생성
         job_uri = f'https://{HOST}/api/1/printing/printers/{subject_id}/jobs'
 
         data_param = {
@@ -105,25 +99,25 @@ class EpsonPrintConnectAPI(APIView):
 
         if res.status != HTTPStatus.CREATED:
             return Response({'error': f'{res.status}:{res.reason}'}, status=status.HTTP_400_BAD_REQUEST)
-
         job_data = json.loads(body)
+
         job_id = job_data.get('id')
         base_uri = job_data.get('upload_uri')
 
-        # 프린터 파일 업로드
-        local_file_path = file.temporary_file_path() if hasattr(file, 'temporary_file_path') else file.name
+        # 프린트 파일  업로드
+        local_file_path = file.name
         _, ext = os.path.splitext(local_file_path)
         file_name = '1' + ext
         upload_uri = base_uri + '&File=' + file_name
 
         headers = {
-            'Content-Length': str(file.size),
+            'Content-Length': str(os.path.getsize(local_file_path)),
             'Content-Type': 'application/octet-stream'
         }
 
         try:
-            with file.open('rb') as f:
-                req = request.Request(upload_uri, data=f.read(), headers=headers, method='POST')
+            with open(local_file_path, 'rb') as f:
+                req = request.Request(upload_uri, data=f, headers=headers, method='POST')
                 with request.urlopen(req) as res:
                     body = res.read()
         except error.HTTPError as err:
@@ -133,8 +127,8 @@ class EpsonPrintConnectAPI(APIView):
 
         if res.status != HTTPStatus.OK:
             return Response({'error': f'{res.status}:{res.reason}'}, status=status.HTTP_400_BAD_REQUEST)
-
         # 파일 출력
+
         print_uri = f'https://{HOST}/api/1/printing/printers/{subject_id}/jobs/{job_id}/print'
         data = ''
 
@@ -168,6 +162,131 @@ class EpsonPrintConnectAPI(APIView):
             type='print_started'
         )
         return Response({'message': "프린트가 성공적으로 완료되었습니다"}, status=status.HTTP_200_OK)
+
+
+class EpsonPrintConnectAPI(APIView):
+    permission_classes = [IsAuthenticated]
+    parser_classes = [JSONParser, FormParser, MultiPartParser]
+    parser_classes = (MultiPartParser, FormParser)
+
+    @swagger_auto_schema(
+        operation_summary="Epson 프린터에 올린 파일 출력하기",
+        manual_parameters=[
+            openapi.Parameter('file', openapi.IN_FORM, type=openapi.TYPE_FILE, description='출력할 파일')
+        ],
+        responses={
+            status.HTTP_200_OK: openapi.Response('프린트 성공'),
+            status.HTTP_400_BAD_REQUEST: openapi.Response('프린트 실패'),
+            status.HTTP_404_NOT_FOUND: openapi.Response('편지 찾을 수 없음'),
+            status.HTTP_405_METHOD_NOT_ALLOWED: openapi.Response('API호출 불가, 아직 파일이 업로드되기 전')
+        }
+    )
+    def post(self, request_data):
+        file = request_data.FILES.get('file')
+        device = request_data.user.epson_email
+        # 1. Authentication
+        auth_uri = EPSON_URL
+        auth = base64.b64encode((CLIENT_ID + ':' + SECRET).encode()).decode()
+
+        query_param = {
+            'grant_type': 'password',
+            'username': device,
+            'password': ''
+        }
+        query_string = parse.urlencode(query_param)
+
+        headers = {
+            'Authorization': 'Basic ' + auth,
+            'Content-Type': 'application/x-www-form-urlencoded; charset=utf-8'
+        }
+
+        try:
+            req = request.Request(auth_uri, data=query_string.encode('utf-8'), headers=headers, method='POST')
+            with request.urlopen(req) as res:
+                body = res.read()
+        except error.HTTPError as err:
+            return Response({'error': f'{err.code}:{err.reason}:{str(err.read())}'}, status=status.HTTP_400_BAD_REQUEST)
+        except error.URLError as err:
+            return Response({'error': err.reason}, status=status.HTTP_400_BAD_REQUEST)
+
+        if res.status != HTTPStatus.OK:
+            return Response({'error': f'{res.status}:{res.reason}'}, status=status.HTTP_400_BAD_REQUEST)
+        auth_data = json.loads(body)
+        subject_id = auth_data.get('subject_id')
+        access_token = auth_data.get('access_token')
+        # 프린트에게 전달할 id 및 Url 생성
+
+        job_uri = f'https://{HOST}/api/1/printing/printers/{subject_id}/jobs'
+
+        data_param = {
+            'job_name': 'Print',
+            'print_mode': 'photo'
+        }
+        data = json.dumps(data_param)
+
+        headers = {
+            'Authorization': 'Bearer ' + access_token,
+            'Content-Type': 'application/json;charset=utf-8'
+        }
+
+        try:
+            req = request.Request(job_uri, data=data.encode('utf-8'), headers=headers, method='POST')
+            with request.urlopen(req) as res:
+                body = res.read()
+        except error.HTTPError as err:
+            return Response({'error': f'{err.code}:{err.reason}:{str(err.read())}'}, status=status.HTTP_400_BAD_REQUEST)
+        except error.URLError as err:
+            return Response({'error': err.reason}, status=status.HTTP_400_BAD_REQUEST)
+
+        if res.status != HTTPStatus.CREATED:
+            return Response({'error': f'{res.status}:{res.reason}'}, status=status.HTTP_400_BAD_REQUEST)
+        job_data = json.loads(body)
+
+        job_id = job_data.get('id')
+        base_uri = job_data.get('upload_uri')
+
+        # 프린트 파일  업로드
+        _, ext = os.path.splitext(file.name)
+        file_name = '1' + ext
+        upload_uri = base_uri + '&File=' + file_name
+
+        headers = {
+            'Content-Length': str(file.size),
+            'Content-Type': 'application/octet-stream'
+        }
+
+        try:
+            req = request.Request(upload_uri, data=file, headers=headers, method='POST')
+            with request.urlopen(req) as res:
+                body = res.read()
+        except error.HTTPError as err:
+            return Response({'error': f'{err.code}:{err.reason}:{str(err.read())}'}, status=status.HTTP_400_BAD_REQUEST)
+        except error.URLError as err:
+            return Response({'error': err.reason}, status=status.HTTP_400_BAD_REQUEST)
+        if res.status != HTTPStatus.OK:
+            return Response({'error': f'{res.status}:{res.reason}'}, status=status.HTTP_400_BAD_REQUEST)
+        # 파일 출력
+
+        print_uri = f'https://{HOST}/api/1/printing/printers/{subject_id}/jobs/{job_id}/print'
+        data = ''
+
+        headers = {
+            'Authorization': 'Bearer ' + access_token,
+            'Content-Type': 'application/json; charset=utf-8'
+        }
+
+        try:
+            req = request.Request(print_uri, data=data.encode('utf-8'), headers=headers, method='POST')
+            with request.urlopen(req) as res:
+                body = res.read()
+        except error.HTTPError as err:
+            return Response({'error': f'{err.code}:{err.reason}:{str(err.read())}'}, status=status.HTTP_400_BAD_REQUEST)
+        except error.URLError as err:
+            return Response({'error': err.reason}, status=status.HTTP_400_BAD_REQUEST)
+
+        if res.status != HTTPStatus.OK:
+            return Response({'error': f'{res.status}:{res.reason}'}, status=status.HTTP_400_BAD_REQUEST)
+        return Response({'message : 프린트가 성공적으로 완료되었습니다'}, status=status.HTTP_200_OK)
 
 
 class ScannerDestinationsView(APIView):
