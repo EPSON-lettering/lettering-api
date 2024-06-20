@@ -24,6 +24,7 @@ class User(AbstractBaseUser):
     is_loggined = models.BooleanField(default=False)
     withdraw_reason = models.TextField(null=True)
     email = models.EmailField()
+    status_message = models.CharField(max_length=50, null=True, blank=True)
 
     def __str__(self):
         return self.nickname
