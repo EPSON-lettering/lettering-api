@@ -154,13 +154,14 @@ class GetMatchDetailsView(APIView):
     def get(self, req):
         user: User = req.user
         match = (Match.objects
-                 .filter(requester=user, withdraw_reason__isnull=True)
+                 .filter(requester=user, withdraw_reason__isnull=True, state=True)
                  .order_by("-created_at")
                  .first()
                  )
 
         if match is None:
-            return Response(None)
+            return Response(None, status=status.HTTP_404_NOT_FOUND)
+
         acceptor_id = match.acceptor.id
         acceptor = User.objects.get(id=acceptor_id)
         user_interests = UserInterest.objects.filter(user=acceptor)
