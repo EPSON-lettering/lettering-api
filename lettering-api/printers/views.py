@@ -16,12 +16,19 @@ from urllib import request, parse, error
 import base64, requests, os
 from PIL import Image
 from letters.models import Letter
+from accounts.models import User
+
 
 EPSON_URL = os.environ.get('EPSON_URL')
 CLIENT_ID = os.environ.get('EPSON_CLIENT_ID')
 SECRET = os.environ.get('EPSON_SECRET')
 HOST = os.environ.get('EPSON_HOST')
 ACCEPT = os.environ.get('EPSON_ACCEPT')
+
+LETTER_STATUES = {
+    "before_writing": 0,
+    "process_writing": 1,
+}
 
 
 class EpsonLetterIdPrintConnectAPI(APIView):
@@ -170,11 +177,27 @@ class EpsonLetterIdPrintConnectAPI(APIView):
             type='print_started'
         )
 
+
+
         user = request.user
-        user.status_message = '편지를 작성 중입니다!'
+        user.status_message = LETTER_STATUES["process_writing"]
         user.save()
 
         return Response({'message': "프린트가 성공적으로 완료되었습니다"}, status=status.HTTP_200_OK)
+
+
+class ChangeUserWritingSatusAPI(APIView):
+
+    @swagger_auto_schema(
+        operation_summary="사용자 편지 작성 중 상태 변경 API",
+        responses={
+            status.HTTP_200_OK: openapi.Response('편지 작성 중 상태로 변경'),
+        }
+    )
+    def patch(self, request):
+        user = User.objects.get(id=request.user.id)
+        user.status_message = LETTER_STATUES["process_writing"]
+        return Response({"message": None}, status=200)
 
 
 class EpsonPrintConnectAPI(APIView):
@@ -447,6 +470,7 @@ class EpsonConnectEmailAPIView(APIView):
         except error.URLError as err:
             return Response({'error': err.reason}, status=status.HTTP_400_BAD_REQUEST)
         except SSLCertVerificationError as err:
+            print(f'test: {err}')
             return Response({'error': str(err)}, status=status.HTTP_400_BAD_REQUEST)
         if res.status != HTTPStatus.OK:
             return Response({'error': f'{res.status}:{res.reason}'}, status=status.HTTP_400_BAD_REQUEST)
