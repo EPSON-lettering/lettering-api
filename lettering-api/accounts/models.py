@@ -28,3 +28,7 @@ class User(AbstractBaseUser):
 
     def __str__(self):
         return self.nickname
+
+    def change_letter_status(self, status):
+        self.status_message = status
+        self.save()
