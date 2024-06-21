@@ -183,6 +183,7 @@ class Logout(APIView):
     )
     def post(self, request):
         try:
+            request.user.is_loggined = False
             refresh_token = request.data.get('refresh')
             token = RefreshToken(refresh_token)
             token.blacklist()
