@@ -12,6 +12,7 @@ from .serializers import MatchSerializer, MatchRequestSerializer, MatchUserSeria
     IntegrateSearchMatchDetailsSerializer
 from .services import CommonInterest
 from accounts.serializers import UserSerializer
+from accounts.domain import LetterWritingStatus
 from interests.serializers import QuestionSerializer
 
 
@@ -126,6 +127,11 @@ class MatchRequestView(APIView):
                 learning_lang=match_request.receiver.language,
                 state=True
             )
+            requester = User.objects.get(id=match_request.requester.id)
+            acceptor = User.objects.get(id=match_request.acceptor.id)
+            requester.change_letter_status(LetterWritingStatus.PROCESSING)
+            acceptor.change_letter_status(LetterWritingStatus.PROCESSING)
+
             match_request.delete()
             serializer = MatchSerializer(match)
             return Response(serializer.data, status=status.HTTP_200_OK)
