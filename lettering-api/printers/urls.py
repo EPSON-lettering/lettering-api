@@ -14,7 +14,7 @@ schema_view = get_schema_view(
         description="Lettering API",
     ),
     public=True,
-    permission_classes=(AllowAny,),
+    permission_classes=(AllowAny),
 )
 
 urlpatterns = [

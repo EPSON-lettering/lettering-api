@@ -1,5 +1,19 @@
-from django.urls import path, include
+from django.urls import path, re_path
+from drf_yasg import openapi
+from drf_yasg.views import get_schema_view
+from rest_framework import permissions
+from rest_framework.permissions import AllowAny
 from .views import LetterAPIView, CheckUserLetterAPIView, CheckOtherPersonAPIView
+
+schema_view = get_schema_view(
+    openapi.Info(
+        title="Lettering API",
+        default_version='v1',
+        description="Lettering API",
+    ),
+    public=True,
+    permission_classes=([AllowAny]),
+)
 
 urlpatterns = [
     path('lettering/', LetterAPIView.as_view(), name='letters'),
