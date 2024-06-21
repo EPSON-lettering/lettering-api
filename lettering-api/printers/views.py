@@ -470,8 +470,7 @@ class EpsonConnectEmailAPIView(APIView):
         except error.URLError as err:
             return Response({'error': err.reason}, status=status.HTTP_400_BAD_REQUEST)
         except SSLCertVerificationError as err:
-            print(f'test: {err}')
-            return Response({'error': str(err)}, status=status.HTTP_400_BAD_REQUEST)
+            return Response({'error': str(err.verify_message)}, status=status.HTTP_400_BAD_REQUEST)
         if res.status != HTTPStatus.OK:
             return Response({'error': f'{res.status}:{res.reason}'}, status=status.HTTP_400_BAD_REQUEST)
         if serializer.is_valid():
