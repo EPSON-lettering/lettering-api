@@ -153,6 +153,7 @@ AWS_S3_REGION_NAME = os.environ.get('AWS_S3_REGION_NAME')
 
 CORS_ALLOWED_ORIGINS = [
     "http://galaxy4276.asuscomm.com:3000",
+    "https://api.epsonconnect.com",
     "http://localhost:3000",
     "http://localhost:8000",
 ]
