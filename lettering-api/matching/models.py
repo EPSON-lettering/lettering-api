@@ -4,13 +4,20 @@ from interests.models import Question
 
 
 class MatchRequest(models.Model):
-    requester = models.ForeignKey(User, related_name='sent_match_requests', on_delete=models.CASCADE)
-    receiver = models.ForeignKey(User, related_name='received_match_requests', on_delete=models.CASCADE)
-    state = models.BooleanField(default=False)
-    created_at = models.DateTimeField(auto_now_add=True)
+    REQUESTED = 'requested'
+    ACCEPTED = 'accepted'
+    REJECTED = 'rejected'
 
-    def __str__(self):
-        return f"Request from {self.requester.nickname} to {self.receiver.nickname}"
+    STATE_CHOICES = [
+        (REQUESTED, 'Requested'),
+        (ACCEPTED, 'Accepted'),
+        (REJECTED, 'Rejected'),
+    ]
+
+    requester = models.ForeignKey(User, related_name='sent_requests', on_delete=models.CASCADE)
+    receiver = models.ForeignKey(User, related_name='received_requests', on_delete=models.CASCADE)
+    state = models.CharField(max_length=10, choices=STATE_CHOICES, default=REQUESTED)
+    created_at = models.DateTimeField(auto_now_add=True)
 
 
 class Match(models.Model):

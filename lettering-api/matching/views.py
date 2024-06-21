@@ -5,6 +5,7 @@ from rest_framework.permissions import IsAuthenticated, AllowAny
 from drf_yasg.utils import swagger_auto_schema
 from drf_yasg import openapi
 import random
+from django.db.models import Q
 
 from interests.models import UserInterest, Interest, Question
 from .models import Match, User, MatchRequest
@@ -29,30 +30,57 @@ class MatchView(APIView):
         request_body=openapi.Schema(
             type=openapi.TYPE_OBJECT,
             properties={
-                'nickname': openapi.Schema(type=openapi.TYPE_STRING, description='User nickname'),
+                'nickname': openapi.Schema(type=openapi.TYPE_STRING, description='유저 닉네임'),
             },
             required=['nickname']
         ),
         responses={
-            201: openapi.Response('Match request created', MatchRequestSerializer),
-            404: openapi.Response('No suitable match found'),
-            401: openapi.Response('Unauthorized')
+            201: openapi.Response('매칭 요청이 생성되었습니다.', MatchRequestSerializer),
+            404: openapi.Response('적절한 매칭을 찾을 수 없습니다.'),
+            400: openapi.Response('잘못된 요청입니다.'),
+            401: openapi.Response('인증되지 않았습니다.')
         }
     )
     def post(self, request):
         nickname = request.data.get('nickname')
         if not nickname:
-            return Response({"detail": "Nickname is required."}, status=status.HTTP_400_BAD_REQUEST)
+            return Response({"detail": "닉네임이 필요합니다."}, status=status.HTTP_400_BAD_REQUEST)
 
         try:
             user = User.objects.get(nickname=nickname)
         except User.DoesNotExist:
-            return Response({"detail": "User not found."}, status=status.HTTP_404_NOT_FOUND)
+            return Response({"detail": "유저를 찾을 수 없습니다."}, status=status.HTTP_404_NOT_FOUND)
+
+        rejected_users = MatchRequest.objects.filter(
+            requester=user, state=MatchRequest.REJECTED
+        ).values_list('receiver_id', flat=True)
+
+        matched_users = Match.objects.filter(
+            Q(requester=user) | Q(acceptor=user),
+            state=True,
+            withdraw_reason__isnull=True
+        ).values_list('requester_id', 'acceptor_id')
+
+        matched_user_ids = set()
+        for match_pair in matched_users:
+            matched_user_ids.update(match_pair)
+
+        ended_matches = Match.objects.filter(
+            Q(requester=user) | Q(acceptor=user),
+            state=False,
+            withdraw_reason__isnull=False
+        ).values_list('requester_id', 'acceptor_id')
+
+        ended_user_ids = set()
+        for match_pair in ended_matches:
+            ended_user_ids.update(match_pair)
 
         potential_matches = User.objects.filter(
             language__isnull=False,
             userinterest__interest__in=user.userinterest_set.values_list('interest', flat=True)
-        ).exclude(id=user.id).distinct()
+        ).exclude(
+            Q(id__in=rejected_users) | Q(id__in=matched_user_ids) | Q(id__in=ended_user_ids)
+        ).distinct()
 
         best_match = None
         best_match_score = -1
@@ -78,7 +106,7 @@ class MatchView(APIView):
             serializer = MatchRequestSerializer(match_request, interests=duplicate_interest)
             return Response(serializer.data, status=status.HTTP_201_CREATED)
         else:
-            return Response({"detail": "No suitable match found"}, status=status.HTTP_404_NOT_FOUND)
+            return Response({"detail": "적절한 매칭을 찾을 수 없습니다."}, status=status.HTTP_404_NOT_FOUND)
 
 
 class MatchRequestView(APIView):
@@ -87,37 +115,38 @@ class MatchRequestView(APIView):
     @swagger_auto_schema(
         operation_summary="매칭 수락 또는 거절",
         manual_parameters=[
-            openapi.Parameter('action', openapi.IN_PATH, description="Action to perform ('accept' or 'reject')",
+            openapi.Parameter('action', openapi.IN_PATH, description="수행할 작업 ('accept' 또는 'reject')",
                               type=openapi.TYPE_STRING)
         ],
         responses={
-            200: openapi.Response('Match request accepted or rejected', MatchSerializer),
-            404: openapi.Response('Match request not found'),
-            400: openapi.Response('Invalid action'),
-            401: openapi.Response('Unauthorized')
+            200: openapi.Response('매칭 요청이 수락 또는 거절되었습니다.', MatchSerializer),
+            404: openapi.Response('매칭 요청을 찾을 수 없습니다.'),
+            400: openapi.Response('잘못된 작업입니다.'),
+            401: openapi.Response('인증되지 않았습니다.')
         }
     )
     def post(self, request, request_id, action):
         if not request.user.is_authenticated:
-            return Response({"detail": "Authentication credentials were not provided."},
+            return Response({"detail": "인증 자격 증명이 제공되지 않았습니다."},
                             status=status.HTTP_401_UNAUTHORIZED)
 
         try:
-            match_request = MatchRequest.objects.get(id=request_id, requester=request.user)
+            match_request = MatchRequest.objects.get(id=request_id, receiver=request.user)
         except MatchRequest.DoesNotExist:
-            return Response({"detail": "Match request not found"}, status=status.HTTP_404_NOT_FOUND)
+            return Response({"detail": "매칭 요청을 찾을 수 없습니다."}, status=status.HTTP_404_NOT_FOUND)
 
         if action == 'accept':
-            match_request.state = True
+            match_request.state = MatchRequest.ACCEPTED
             match_request.save()
 
             exists_match = Match.objects.filter(
-                requester=match_request.requester,
-                acceptor=match_request.receiver,
+                Q(requester=match_request.requester, acceptor=match_request.receiver) |
+                Q(requester=match_request.receiver, acceptor=match_request.requester),
+                state=True,
                 withdraw_reason__isnull=True
             ).first()
-            print(f'exists_match: {exists_match}')
-            if exists_match is not None:
+
+            if exists_match:
                 return Response({"message": "이미 매칭된 사용자입니다."}, status=status.HTTP_400_BAD_REQUEST)
 
             match = Match.objects.create(
@@ -128,18 +157,18 @@ class MatchRequestView(APIView):
                 state=True
             )
             requester = User.objects.get(id=match_request.requester.id)
-            acceptor = User.objects.get(id=match_request.acceptor.id)
+            acceptor = User.objects.get(id=match_request.receiver.id)
             requester.change_letter_status(LetterWritingStatus.PROCESSING)
             acceptor.change_letter_status(LetterWritingStatus.PROCESSING)
 
-            match_request.delete()
             serializer = MatchSerializer(match)
             return Response(serializer.data, status=status.HTTP_200_OK)
         elif action == 'reject':
-            match_request.delete()
-            return Response({"detail": "Match request rejected"}, status=status.HTTP_200_OK)
+            match_request.state = MatchRequest.REJECTED
+            match_request.save()
+            return Response({"detail": "매칭 요청이 거절되었습니다."}, status=status.HTTP_200_OK)
         else:
-            return Response({"detail": "Invalid action"}, status=status.HTTP_400_BAD_REQUEST)
+            return Response({"detail": "잘못된 작업입니다."}, status=status.HTTP_400_BAD_REQUEST)
 
 
 class GetMatchDetailsView(APIView):
@@ -154,7 +183,7 @@ class GetMatchDetailsView(APIView):
     def get(self, req):
         user: User = req.user
         match = (Match.objects
-                 .filter(requester=user, withdraw_reason__isnull=True, state=True)
+                 .filter(Q(requester=user) | Q(acceptor=user), withdraw_reason__isnull=True, state=True)
                  .order_by("-created_at")
                  .first()
                  )
@@ -183,7 +212,7 @@ class GetMatchingListView(APIView):
     def get(self, req):
         user: User = req.user
         matches = (Match.objects
-                   .filter(requester=user, withdraw_reason__isnull=True)
+                   .filter(Q(requester=user) | Q(acceptor=user), withdraw_reason__isnull=True, state=True)
                    .order_by("-created_at")
                    )
         return Response(MatchSerializer(matches, many=True).data, status=200)
@@ -195,22 +224,24 @@ class QuestionView(APIView):
     @swagger_auto_schema(
         operation_summary="현재 질문 조회",
         manual_parameters=[
-            openapi.Parameter('match_id', openapi.IN_PATH, description="Match ID", type=openapi.TYPE_INTEGER)
+            openapi.Parameter('match_id', openapi.IN_PATH, description="매칭 ID", type=openapi.TYPE_INTEGER)
         ],
         responses={
             200: openapi.Response(description="현재 질문 조회 성공", schema=QuestionSerializer),
             404: openapi.Response(description="매칭 또는 질문 조회 실패"),
-            401: openapi.Response(description="Unauthorized")
+            401: openapi.Response(description="인증되지 않았습니다.")
         }
     )
     def get(self, request, match_id):
         try:
-            match = Match.objects.get(id=match_id, requester=request.user)
+            match = Match.objects.get(
+                Q(id=match_id) & (Q(requester=request.user) | Q(acceptor=request.user))
+            )
         except Match.DoesNotExist:
-            return Response({"detail": "Match not found."}, status=status.HTTP_404_NOT_FOUND)
+            return Response({"detail": "매칭을 찾을 수 없습니다."}, status=status.HTTP_404_NOT_FOUND)
 
         if not match.current_question:
-            return Response({"detail": "No current question found for this match."}, status=status.HTTP_404_NOT_FOUND)
+            return Response({"detail": "현재 질문이 없습니다."}, status=status.HTTP_404_NOT_FOUND)
 
         serializer = QuestionSerializer(match.current_question)
         return Response(serializer.data, status=status.HTTP_200_OK)
@@ -218,19 +249,19 @@ class QuestionView(APIView):
     @swagger_auto_schema(
         operation_summary="질문 제공",
         manual_parameters=[
-            openapi.Parameter('match_id', openapi.IN_PATH, description="Match ID", type=openapi.TYPE_INTEGER)
+            openapi.Parameter('match_id', openapi.IN_PATH, description="매칭 ID", type=openapi.TYPE_INTEGER)
         ],
         responses={
             200: openapi.Response(description="질문 제공 성공", schema=QuestionSerializer),
             404: openapi.Response(description="매칭 조회 실패 또는 더 이상 제공할 질문이 없음"),
-            401: openapi.Response(description="Unauthorized")
+            401: openapi.Response(description="인증되지 않았습니다.")
         }
     )
     def post(self, request, match_id):
         try:
             match = Match.objects.get(id=match_id, requester=request.user)
         except Match.DoesNotExist:
-            return Response({"detail": "Match not found."}, status=status.HTTP_404_NOT_FOUND)
+            return Response({"detail": "매칭을 찾을 수 없습니다."}, status=status.HTTP_404_NOT_FOUND)
 
         requester_interests = match.requester.userinterest_set.values_list('interest', flat=True)
         acceptor_interests = match.acceptor.userinterest_set.values_list('interest', flat=True)
@@ -240,7 +271,7 @@ class QuestionView(APIView):
         questions = Question.objects.filter(interest__in=common_interests).exclude(id__in=previous_questions)
 
         if not questions.exists():
-            return Response({"detail": "No more questions available."}, status=status.HTTP_404_NOT_FOUND)
+            return Response({"detail": "더 이상 제공할 질문이 없습니다."}, status=status.HTTP_404_NOT_FOUND)
 
         question = random.choice(questions)
         match.provided_questions.add(question)
@@ -249,7 +280,6 @@ class QuestionView(APIView):
 
         serializer = QuestionSerializer(question)
         return Response(serializer.data, status=status.HTTP_200_OK)
-
 
 
 class EndMatchView(APIView):
@@ -267,18 +297,18 @@ class EndMatchView(APIView):
         responses={
             200: openapi.Response(description="매칭 끊기 성공", schema=MatchSerializer),
             404: openapi.Response(description="매칭 조회 실패"),
-            401: openapi.Response(description="Unauthorized")
+            401: openapi.Response(description="인증되지 않았습니다.")
         }
     )
     def post(self, request, match_id):
         reason = request.data.get('reason')
         if not reason:
-            return Response({"detail": "Reason is required."}, status=status.HTTP_400_BAD_REQUEST)
+            return Response({"detail": "이유가 필요합니다."}, status=status.HTTP_400_BAD_REQUEST)
 
         try:
-            match = Match.objects.get(id=match_id, requester=request.user)
+            match = Match.objects.get(id=match_id)
         except Match.DoesNotExist:
-            return Response({"detail": "Match not found."}, status=status.HTTP_404_NOT_FOUND)
+            return Response({"detail": "매칭을 찾을 수 없습니다."}, status=status.HTTP_404_NOT_FOUND)
 
         match.end_match(reason)
         serializer = MatchSerializer(match)
@@ -296,7 +326,7 @@ class MatchOpponentGetterView(APIView):
     )
     def get(self, req):
         match = (Match.objects
-                 .filter(requester=req.user, withdraw_reason__isnull=True)
+                 .filter(Q(requester=req.user) | Q(acceptor=req.user), withdraw_reason__isnull=True, state=True)
                  .first()
                  )
         if not match:
