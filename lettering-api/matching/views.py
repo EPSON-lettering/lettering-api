@@ -295,7 +295,6 @@ class MatchOpponentGetterView(APIView):
         if not match:
             return Response({"message": "매칭이 존재하지 않습니다."}, status=status.HTTP_404_NOT_FOUND)
         opponent = MatchUserSerializer(match.acceptor).data
-        print(f'opponent: {opponent}')
         user = User.objects.get(id=opponent['id'])
         user_interests = UserInterest.objects.filter(user=user)
         interests = [user_interest.interest for user_interest in user_interests]
