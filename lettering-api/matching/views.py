@@ -11,6 +11,7 @@ from .models import Match, User, MatchRequest
 from .serializers import MatchSerializer, MatchRequestSerializer, MatchUserSerializer, SearchMatchDetailsSerializer, \
     IntegrateSearchMatchDetailsSerializer
 from .services import CommonInterest
+from accounts.serializers import UserSerializer
 from interests.serializers import QuestionSerializer
 
 
@@ -243,6 +244,7 @@ class QuestionView(APIView):
         return Response(serializer.data, status=status.HTTP_200_OK)
 
 
+
 class EndMatchView(APIView):
     permission_classes = [IsAuthenticated]
 
@@ -274,3 +276,28 @@ class EndMatchView(APIView):
         match.end_match(reason)
         serializer = MatchSerializer(match)
         return Response(serializer.data, status=status.HTTP_200_OK)
+
+
+class MatchOpponentGetterView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    @swagger_auto_schema(
+        operation_summary="매칭 상대방 피드 조회",
+        responses={
+            200: openapi.Response(description="상대방 피드 조회", schema=UserSerializer),
+        }
+    )
+    def get(self, req):
+        match = (Match.objects
+                 .filter(requester=req.user, withdraw_reason__isnull=True)
+                 .first()
+                 )
+        if not match:
+            return Response({"message": "매칭이 존재하지 않습니다."}, status=status.HTTP_404_NOT_FOUND)
+        opponent = MatchUserSerializer(match.acceptor).data
+        print(f'opponent: {opponent}')
+        user = User.objects.get(id=opponent['id'])
+        user_interests = UserInterest.objects.filter(user=user)
+        interests = [user_interest.interest for user_interest in user_interests]
+        result = UserSerializer(user, interests=interests).data
+        return Response(result, status=200)
