@@ -4,6 +4,7 @@ from matching.models import Match
 from botocore.exceptions import ClientError
 from rest_framework import serializers
 from letters.models import Letter
+from .models import EpsonConnectScanData
 
 
 class EpsonConnectPrintSerializer(serializers.Serializer):
@@ -23,7 +24,7 @@ class EpsonScanSerializer(serializers.Serializer):
             aws_access_key_id=os.environ.get('AWS_ACCESS_KEY_ID'),
             aws_secret_access_key=os.environ.get('AWS_SECRET_ACCESS_KEY'),
         )
-        file_count = Letter.objects.filter(sender=user).count()
+        file_count = EpsonConnectScanData.objects.filter(user=user).count()
         file_name = f'{user.id}/{file_count + 1}.jpg'
         try:
             s3.upload_fileobj(
@@ -36,15 +37,10 @@ class EpsonScanSerializer(serializers.Serializer):
             raise serializers.ValidationError("파일 업로드에 실패했습니다.")
 
         try:
-            match = Match.objects.get(requester=user)
-            letter = Letter.objects.create(
-                receiver=match.acceptor,
-                sender=user,
-                image_url=file_name,
-                is_read=False,
-                match_id=match.id,
-            )
-            letter.save()
+            EpsonConnectScanData.objects.create(
+                user=user,
+                imageUrl=file_name,
+            ).save()
         except Match.DoesNotExist:
             print(f"Match object not found for user: {user}")
             raise serializers.ValidationError("매칭 정보를 찾을 수 없습니다.")

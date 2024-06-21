@@ -4,7 +4,7 @@ from drf_yasg.views import get_schema_view
 from rest_framework.permissions import AllowAny
 
 from .views import EpsonPrintConnectAPI, ScannerDestinationsView, FileUploadView, EpsonConnectEmailAPIView, \
-    ToEpsonFileUploadView, EpsonLetterIdPrintConnectAPI, ChangeUserWritingSatusAPI
+    ToEpsonFileUploadView, EpsonLetterIdPrintConnectAPI, ChangeUserWritingSatusAPI, ScanDataAPIView
 
 schema_view = get_schema_view(
     openapi.Info(
@@ -27,4 +27,5 @@ urlpatterns = [
     path('scan/fileSave', FileUploadView.as_view(), name='epson-file-upload-with-files'),
     path('swagger/', schema_view.with_ui('swagger', cache_timeout=0), name='schema-swagger-ui'),
     path('redoc/', schema_view.with_ui('redoc', cache_timeout=0), name='schema-redoc'),
+    path('scan/data',ScanDataAPIView.as_view(),name="scan-data-api" )
 ]

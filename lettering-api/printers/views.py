@@ -17,6 +17,7 @@ import base64, requests, os
 from PIL import Image
 from letters.models import Letter
 from accounts.models import User
+from .models import EpsonConnectScanData
 
 
 EPSON_URL = os.environ.get('EPSON_URL')
@@ -60,7 +61,7 @@ class EpsonLetterIdPrintConnectAPI(APIView):
 
         # 1. Authentication
         auth_uri = EPSON_URL
-        auth = base64.b64encode((CLIENT_ID + ':' + SECRET).encode()).decode()
+        auth = auth = base64.b64encode(f'{CLIENT_ID}:{SECRET}'.encode()).decode()
 
         query_param = {
             'grant_type': 'password',
@@ -222,7 +223,7 @@ class EpsonPrintConnectAPI(APIView):
         device = request_data.user.epson_email
         # 1. Authentication
         auth_uri = EPSON_URL
-        auth = base64.b64encode((CLIENT_ID + ':' + SECRET).encode()).decode()
+        auth = base64.b64encode(f'{CLIENT_ID}:{SECRET}'.encode()).decode()
 
         query_param = {
             'grant_type': 'password',
@@ -392,7 +393,7 @@ class FileUploadView(APIView):
     parser_classes = [JSONParser, FormParser, MultiPartParser]
     parser_classes = (MultiPartParser, FormParser)
     @swagger_auto_schema(
-        operation_summary="유저가 스캐너가 없을 때 사진 업로드 후 보내기",
+        operation_summary="유저가 스캐너가 없을 때 사진 업로드 후 저장",
         manual_parameters=[
             openapi.Parameter('imagefile', openapi.IN_FORM, type=openapi.TYPE_FILE, description='저장할 파일')
         ],
@@ -415,7 +416,7 @@ class ToEpsonFileUploadView(APIView):
     parser_classes = [JSONParser, FormParser, MultiPartParser]
     parser_classes = (MultiPartParser, FormParser)
     @swagger_auto_schema(
-        operation_summary="Epson 프린터 스캔 후 보내기",
+        operation_summary="Epson 프린터 스캔 후 저장",
         responses={
             status.HTTP_201_CREATED: openapi.Response('message: 전송이 완료되었습니다'),
             status.HTTP_400_BAD_REQUEST: openapi.Response('매칭 정보를 찾을 수 없습니다'),
@@ -443,11 +444,10 @@ class EpsonConnectEmailAPIView(APIView):
     )
     def post(self, request_data):
         device = request_data.data['epsonEmail']
-        user = request_data.user
         serializer = EpsonConnectEmailSerializer(data=request_data.data, context={'request': request_data})
         # 인증
         auth_uri = EPSON_URL
-        auth = base64.b64encode((CLIENT_ID + ':' + SECRET).encode()).decode()
+        auth = base64.b64encode(f'{CLIENT_ID}:{SECRET}'.encode()).decode()
 
         query_param = {
             'grant_type': 'password',
@@ -470,10 +470,24 @@ class EpsonConnectEmailAPIView(APIView):
         except error.URLError as err:
             return Response({'error': err.reason}, status=status.HTTP_400_BAD_REQUEST)
         except SSLCertVerificationError as err:
-            return Response({'error': str(err.verify_message)}, status=status.HTTP_400_BAD_REQUEST)
+            return Response({'error': err.verify_message}, status=status.HTTP_400_BAD_REQUEST)
         if res.status != HTTPStatus.OK:
             return Response({'error': f'{res.status}:{res.reason}'}, status=status.HTTP_400_BAD_REQUEST)
         if serializer.is_valid():
             serializer.save()
             return Response({"message : 연결이 완료 되었습니다!"}, status=status.HTTP_201_CREATED)
         return Response({"error : 잘못된 요청입니다!"}, status=status.HTTP_400_BAD_REQUEST)
+
+
+class ScanDataAPIView(APIView):
+    @swagger_auto_schema(
+        operation_summary="최근에 스캔한 혹은 가져온 이미지 URL 가져오기",
+        responses={
+            status.HTTP_200_OK : "imageUrl",
+        }
+    )
+    def get(self, request_data):
+        ScanData = EpsonConnectScanData.objects.filter(user=request_data.user).order_by('-id')[0]
+        imageUrl = ScanData.imageUrl
+        return Response({"imageUrl": str(imageUrl)})
+
