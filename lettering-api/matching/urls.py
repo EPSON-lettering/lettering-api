@@ -5,6 +5,7 @@ from .views import (
     GetMatchingListView,
     QuestionView,
     EndMatchView,
+    MatchOpponentGetterView
 )
 from django.urls import path, re_path
 from drf_yasg import openapi
@@ -25,6 +26,7 @@ urlpatterns = [
     path('', MatchView.as_view(), name='match'),
     path('request/<int:request_id>/<str:action>/', MatchRequestView.as_view(), name='match_request_action'),
     path('details/', GetMatchDetailsView.as_view()),
+    path('opponent/', MatchOpponentGetterView.as_view()),
     path('list/', GetMatchingListView.as_view()),
     path('question/<int:match_id>/', QuestionView.as_view(), name='provide_random_question'),
     path('end/<int:match_id>/', EndMatchView.as_view(), name='end-match'),
