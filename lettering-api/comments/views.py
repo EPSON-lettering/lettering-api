@@ -1,10 +1,14 @@
-from rest_framework import status
-from rest_framework.response import Response
-from rest_framework.views import APIView
-from rest_framework.permissions import IsAuthenticated
-from .models import Comment, Reply
-from .serializers import CommentSerializer, ReplySerializer
+from django.db.models import Q
 from drf_yasg.utils import swagger_auto_schema
+from rest_framework.views import APIView
+from rest_framework.response import Response
+from rest_framework.permissions import IsAuthenticated
+from rest_framework import status
+from .models import Comment, Reply
+from letters.models import Letter
+from notifications.models import Notification
+from .serializers import CommentSerializer, ReplySerializer
+from badges.models import Badge, UserBadge
 
 class CommentAPIView(APIView):
     permission_classes = [IsAuthenticated]
@@ -39,15 +43,22 @@ class CommentAPIView(APIView):
 
     def award_badge(self, user, badge_name):
         badge = Badge.objects.get(name=badge_name)
+        current_step = badge.steps.order_by('step_number').first()
+
         user_badge, created = UserBadge.objects.get_or_create(
             user=user,
             badge=badge,
-            step=badge.steps.order_by('step_number').first()
+            defaults={'step': current_step, 'progress': 0}
         )
+
         user_badge.progress += 1
         if user_badge.progress >= user_badge.step.required_count:
-            user_badge.step = badge.steps.filter(step_number=user_badge.step.step_number + 1).first()
-            user_badge.progress = 0
+            next_step = badge.steps.filter(step_number=user_badge.step.step_number + 1).first()
+            if next_step:
+                user_badge.step = next_step
+                user_badge.progress = 0
+            else:
+                user_badge.progress = user_badge.step.required_count  # 최종 단계에서는 더 이상 진행하지 않음
         user_badge.save()
 
 
@@ -77,6 +88,6 @@ class ReplyAPIView(APIView):
         data['comment'] = comment_id
         serializer = ReplySerializer(data=data, context={'request': request})
         if serializer.is_valid():
-            serializer.save(sender=request.user)
+            reply = serializer.save()
             return Response(serializer.data, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)

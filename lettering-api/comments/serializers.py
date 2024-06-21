@@ -11,8 +11,8 @@ class CommentUserSerializer(serializers.ModelSerializer):
 class CommentSerializer(serializers.ModelSerializer):
     createdAt = serializers.DateTimeField(source='created_at')
     image = serializers.ImageField(required=False)
-    sender = CommentUserSerializer()
-    receiver = CommentUserSerializer()
+    sender = serializers.PrimaryKeyRelatedField(queryset=User.objects.all())
+    receiver = serializers.PrimaryKeyRelatedField(queryset=User.objects.all())
 
     class Meta:
         model = Comment
@@ -31,8 +31,8 @@ class CommentSerializer(serializers.ModelSerializer):
 class ReplySerializer(serializers.ModelSerializer):
     createdAt = serializers.DateTimeField(source='created_at')
     image = serializers.ImageField(required=False)
-    sender = CommentUserSerializer()
-    receiver = CommentUserSerializer()
+    sender = serializers.PrimaryKeyRelatedField(queryset=User.objects.all())
+    receiver = serializers.PrimaryKeyRelatedField(queryset=User.objects.all())
 
     class Meta:
         model = Reply

@@ -43,7 +43,7 @@ class RegisterUserSerializer(serializers.Serializer):
             email=validated_data['unique'],
             nickname=validated_data['nickname'],
             language=language,
-            is_loggined=True
+            is_loggined=True,
         )
 
         interests_ids = validated_data['interests']
