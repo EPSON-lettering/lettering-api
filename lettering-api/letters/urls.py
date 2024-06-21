@@ -16,6 +16,7 @@ schema_view = get_schema_view(
 )
 
 urlpatterns = [
+    path('lettering/<int:scanDataId>', LetterAPIView.as_view(), name='lettering'),
     path('lettering/', LetterAPIView.as_view(), name='letters'),
     path('otherPerson/lettering', CheckOtherPersonAPIView.as_view(), name='receive letters'),
     path('user/lettering', CheckUserLetterAPIView.as_view(), name='check user letters'),

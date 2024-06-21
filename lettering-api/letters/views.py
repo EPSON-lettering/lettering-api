@@ -1,5 +1,6 @@
 from django.db.models import Q
 from drf_yasg.utils import swagger_auto_schema
+from rest_framework.parsers import JSONParser, FormParser, MultiPartParser
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
@@ -42,7 +43,8 @@ class CheckOtherPersonAPIView(APIView):
 
 class LetterAPIView(APIView):
     permission_classes = [IsAuthenticated]
-
+    parser_classes = [JSONParser, FormParser, MultiPartParser]
+    parser_classes = (MultiPartParser, FormParser)
     @swagger_auto_schema(
         operation_summary="서로 대화한 내역 조회",
         responses={200: LetterSerializer()}
@@ -61,8 +63,8 @@ class LetterAPIView(APIView):
             status.HTTP_400_BAD_REQUEST: 'Bad Request'
         }
     )
-    def post(self, request):
-        serializer = LetterSerializer(data=request.data)
+    def post(self, request, scanDataId):
+        serializer = LetterSerializer(data=request.data, context={'request': request, 'scanDataId': scanDataId})
         if serializer.is_valid():
             letter = serializer.save()
 
@@ -81,7 +83,6 @@ class LetterAPIView(APIView):
 
             return Response(serializer.data, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-
 
     def award_badge(self, user, badge_name):
         badge = Badge.objects.get(name=badge_name)
