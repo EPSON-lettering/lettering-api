@@ -316,7 +316,7 @@ class EpsonPrintConnectAPI(APIView):
         }
 
         try:
-            req = urllib_request.Request(auth_uri, data=query_string.encode('utf-8'), headers=headers, method='POST')
+            req = urllib_request.Request(print_uri, data=query_string.encode('utf-8'), headers=headers, method='POST')
             context = ssl.create_default_context(cafile=certifi.where())
             with urllib_request.urlopen(req, context=context) as res:
                 body = res.read()
