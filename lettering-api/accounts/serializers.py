@@ -65,7 +65,7 @@ class UserSerializer(serializers.ModelSerializer):
     withdrawReason = serializers.CharField(source='withdraw_reason', read_only=True)
     interests = serializers.SerializerMethodField()
     epsonEmail = serializers.EmailField(source='epson_email')
-    status = serializers.CharField(source='status_message', read_only=True)
+    status = serializers.IntegerField(source='status_message', read_only=True)
 
     class Meta:
         model = User
