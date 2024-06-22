@@ -3,6 +3,7 @@ from .models import Letter
 from printers.models import EpsonConnectScanData
 from matching.models import Match
 import boto3
+from botocore.config import Config
 import os
 import uuid
 from django.db import models
@@ -10,6 +11,8 @@ from django.db import models
 AWS_ID = os.environ.get('AWS_ACCESS_KEY_ID')
 AWS_KEY = os.environ.get('AWS_SECRET_ACCESS_KEY')
 BUCKET_NAME = os.environ.get('AWS_STORAGE_BUCKET_NAME')
+REGION = os.environ.get('AWS_S3_REGION_NAME')
+config = Config(signature_version='v4')
 
 
 class LetterSerializer(serializers.Serializer):
@@ -46,8 +49,10 @@ class S3FileUploadSerializer(serializers.Serializer):
         file = validated_data.get('file')
         s3 = boto3.client(
             's3',
+            config=config,
             aws_access_key_id=AWS_ID,
-            aws_secret_access_key=AWS_KEY
+            aws_secret_access_key=AWS_KEY,
+            region_name=REGION
         )
         filename = f'{uuid.uuid1()}.png'
         s3.upload_fileobj(
