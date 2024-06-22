@@ -175,12 +175,12 @@ class EpsonLetterIdPrintConnectAPI(APIView):
         Notification.objects.create(
             user=letter.receiver,
             letter=letter,
-            message=f'{request.user.nickname} 님이 편지를 작성 중입니다!',
+            message=f'{request_data.user.nickname} 님이 편지를 작성 중입니다!',
             is_read=False,
             type='print_started'
         )
 
-        user = request.user
+        user = request_data.user
         user.status_message = LetterWritingStatus.PROCESSING
         user.save()
 
@@ -377,9 +377,9 @@ class ScannerDestinationsView(APIView):
         if requests.get(add_url).status_code == 200:
             requests.delete(add_url)
         data_param = {
-            'alias_name': 'lettering',
+            'alias_name': 'letter',
             'type': 'url',
-            'destination': f'{os.environ.get("EPSON_SCAN_DIRECTION")}/{request_data.user.nickname}',
+            'destination': f'{os.environ.get("EPSON_SCAN_DIRECTION")}',
         }
         data = json.dumps(data_param)
 
@@ -395,7 +395,7 @@ class ScannerDestinationsView(APIView):
             return Response({"success:스캔 대상 추가에 성공했습니다!"}, status=status.HTTP_200_OK)
         except requests.exceptions.RequestException as e:
             print()
-            if response.json()['code'] == "duplicate_alias": return Response({"error": "이전에 등록했습니다."}, status=status.HTTP_400_BAD_REQUEST)
+            if response.json()['code'] == "duplicate_alias": return Response({"error": "이전에 등록했습니다."}, status=status.HTTP_200_OK)
             if response.json()['code'] == "invalid_resource ": return Response({"error": "유형이 잘못되었습니다."}, status=status.HTTP_400_BAD_REQUEST)
             return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
@@ -427,6 +427,7 @@ class ToEpsonFileUploadView(APIView):
     permission_classes = [IsAuthenticated]
     parser_classes = [JSONParser, FormParser, MultiPartParser]
     parser_classes = (MultiPartParser, FormParser)
+
     @swagger_auto_schema(
         operation_summary="Epson 프린터 스캔 후 저장",
         responses={
@@ -436,11 +437,19 @@ class ToEpsonFileUploadView(APIView):
         }
     )
     def post(self, request):
-        serializer = EpsonScanSerializer(data=request.data, context={'request': request})
-        if serializer.is_valid():
-            serializer.save()
-            return Response({"message: 전송이 완료되었습니다"}, status=status.HTTP_201_CREATED)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        if not request.FILES:
+            return Response({'error': 'No file uploaded'}, status=status.HTTP_400_BAD_REQUEST)
+
+        for file_key in request.FILES:
+            file = request.FILES[file_key]
+            serializer = EpsonScanSerializer(data={'imagefile': file}, context={'request': request})
+
+            if serializer.is_valid():
+                serializer.save()
+            else:
+                return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+        return Response({"message": "저장이 완료돠었습니다"}, status=status.HTTP_201_CREATED)
 
 
 class EpsonConnectEmailAPIView(APIView):
