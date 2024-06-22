@@ -16,7 +16,7 @@ class CommentSerializer(serializers.ModelSerializer):
     image = serializers.ImageField(required=False)
     sender = UserSerializer()
     receiver = UserSerializer()
-    latest_reply = serializers.SerializerMethodField()
+    latestReply = serializers.SerializerMethodField()
 
     class Meta:
         model = Comment
@@ -29,7 +29,7 @@ class CommentSerializer(serializers.ModelSerializer):
             'image',
             'createdAt',
             'type',
-            'latest_reply',
+            'latestReply',
         ]
 
     def __init__(self, *args, **kwargs):
@@ -41,7 +41,7 @@ class CommentSerializer(serializers.ModelSerializer):
             return None
         return UserSerializer(self.sender_data).data
 
-    def get_latest_reply(self, obj: Comment):
+    def get_latestReply(self, obj: Comment):
         latest_reply = obj.replies.order_by('-created_at').first()
         if latest_reply:
             return ReplySerializer(latest_reply).data
