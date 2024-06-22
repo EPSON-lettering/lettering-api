@@ -38,6 +38,10 @@ class CommentAPIView(APIView):
             comment = serializer.save()
             if comment.type == 'feedback':
                 self.award_badge(comment.sender, '피드백 마스터')
+
+            elif comment.type == 'chat':
+                self.award_badge(comment.sender, '답장의 제왕')
+            self.update_user_level(comment.sender)
             return Response(serializer.data, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
@@ -58,8 +62,16 @@ class CommentAPIView(APIView):
                 user_badge.step = next_step
                 user_badge.progress = 0
             else:
-                user_badge.progress = user_badge.step.required_count  # 최종 단계에서는 더 이상 진행하지 않음
+                user_badge.progress = user_badge.step.required_count
         user_badge.save()
+
+    def update_user_level(self, user):
+        badges = UserBadge.objects.filter(user=user)
+        if badges.exists():
+            min_level = min(badge.step.step_number for badge in badges)
+            if min_level > 1 and all(badge.step.step_number == min_level for badge in badges):
+                user.level = min_level
+                user.save()
 
 
 

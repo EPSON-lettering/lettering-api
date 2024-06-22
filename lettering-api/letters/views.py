@@ -63,11 +63,10 @@ class LetterAPIView(APIView):
             status.HTTP_400_BAD_REQUEST: 'Bad Request'
         }
     )
-    def post(self, request, scanDataId):
-        serializer = LetterSerializer(data=request.data, context={'request': request, 'scanDataId': scanDataId})
+    def post(self, request):
+        serializer = LetterSerializer(data=request.data, context={'request': request})
         if serializer.is_valid():
             letter = serializer.save()
-
             Notification.objects.create(
                 user=letter.receiver,
                 letter=letter,
@@ -76,22 +75,17 @@ class LetterAPIView(APIView):
                 type='received'
             )
             self.award_badge(letter.sender, '편지의 제왕')
-            letter.sender.status_message = '편지를 전송하였습니다!'
-            letter.sender.save()
-            letter.receiver.status_message = '편지를 수령하였습니다!'
-            letter.receiver.save()
-
+            self.check_consistent_writing(letter.sender)
+            self.update_user_level(letter.sender)
             return Response(serializer.data, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
     def award_badge(self, user, badge_name):
         badge = Badge.objects.get(name=badge_name)
-        current_step = badge.steps.order_by('step_number').first()
-
         user_badge, created = UserBadge.objects.get_or_create(
             user=user,
             badge=badge,
-            defaults={'step': current_step, 'progress': 0}
+            defaults={'step': badge.steps.order_by('step_number').first(), 'progress': 0}
         )
 
         user_badge.progress += 1
@@ -101,8 +95,46 @@ class LetterAPIView(APIView):
                 user_badge.step = next_step
                 user_badge.progress = 0
             else:
-                user_badge.progress = user_badge.step.required_count  # 최종 단계에서는 더 이상 진행하지 않음
+                user_badge.progress = user_badge.step.required_count
         user_badge.save()
+
+    def check_consistent_writing(self, user):
+        today = datetime.now().date()
+        badge = Badge.objects.get(name='꾸준한 학습자')
+        user_badge = UserBadge.objects.filter(user=user, badge=badge).first()
+
+        if user_badge:
+            current_step = user_badge.step
+        else:
+            current_step = badge.steps.order_by('step_number').first()
+
+        required_days = current_step.required_count
+        start_date = today - timedelta(days=required_days - 1)
+        letters = Letter.objects.filter(sender=user, created_at__date__gte=start_date).order_by('created_at')
+
+        if letters.exists():
+            days = {letter.created_at.date() for letter in letters}
+            if self.is_consecutive(days, required_days):
+                self.award_badge(user, '꾸준한 학습자')
+            else:
+                if user_badge:
+                    user_badge.progress = 0
+                    user_badge.save()
+
+    def is_consecutive(self, days, required_days):
+        today = datetime.now().date()
+        for i in range(required_days):
+            if (today - timedelta(days=i)) not in days:
+                return False
+        return True
+
+    def update_user_level(self, user):
+        badges = UserBadge.objects.filter(user=user)
+        if badges.exists():
+            min_level = min(badge.step.step_number for badge in badges)
+            if min_level > 1 and all(badge.step.step_number == min_level for badge in badges):
+                user.level = min_level
+                user.save()
 
     @swagger_auto_schema(
         operation_summary="편지 삭제",

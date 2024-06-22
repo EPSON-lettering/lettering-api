@@ -25,6 +25,7 @@ class User(AbstractBaseUser):
     withdraw_reason = models.TextField(null=True)
     email = models.EmailField()
     status_message = models.CharField(max_length=50, null=True, blank=True)
+    level = models.IntegerField(default=1)
 
     def __str__(self):
         return self.nickname
