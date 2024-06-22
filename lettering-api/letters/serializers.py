@@ -2,6 +2,14 @@ from rest_framework import serializers
 from .models import Letter
 from printers.models import EpsonConnectScanData
 from matching.models import Match
+import boto3
+import os
+import uuid
+
+
+AWS_ID = os.environ.get('AWS_ACCESS_KEY_ID')
+AWS_KEY = os.environ.get('AWS_SECRET_ACCESS_KEY')
+BUCKET_NAME = os.environ.get('AWS_STORAGE_BUCKET_NAME')
 
 
 class LetterSerializer(serializers.Serializer):
@@ -19,3 +27,32 @@ class LetterSerializer(serializers.Serializer):
         )
         letter.save()
         return letter
+
+
+class ManualLetterSerializer(serializers.Serializer):
+    pass
+
+
+class S3FileUploadSerializer(serializers.Serializer):
+    file = serializers.FileField()
+
+    def create(self, validated_data):
+        file = validated_data.get('file')
+        s3 = boto3.client(
+            's3',
+            aws_access_key_id=AWS_ID,
+            aws_secret_access_key=AWS_KEY
+        )
+        filename = f'{uuid.uuid1()}.png'
+        s3.upload_fileobj(
+            file,
+            BUCKET_NAME,
+            filename
+        )
+        url = s3.generate_presigned_url(
+            'get_object',
+            Params={'Bucket': BUCKET_NAME, 'Key': filename},
+            ExpiresIn=3600
+        )
+
+        return {"file_url": url}
