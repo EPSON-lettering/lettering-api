@@ -21,15 +21,16 @@ class EpsonScanSerializer(serializers.Serializer):
         # S3에 파일 업로드
         s3 = boto3.client(
             's3',
-            aws_access_key_id=os.environ.get('AWS_ACCESS_KEY_ID'),
-            aws_secret_access_key=os.environ.get('AWS_SECRET_ACCESS_KEY'),
+            aws_access_key_id=settings.AWS_ACCESS_KEY_ID,
+            aws_secret_access_key=settings.AWS_SECRET_ACCESS_KEY,
+            region_name=settings.AWS_S3_REGION_NAME
         )
         file_count = EpsonConnectScanData.objects.filter(user=user).count()
         file_name = f'{user.id}/{file_count + 1}.jpg'
         try:
             s3.upload_fileobj(
                 imagefile,
-                os.environ.get('AWS_STORAGE_BUCKET_NAME'),
+                settings.AWS_STORAGE_BUCKET_NAME,
                 file_name,
             )
         except ClientError as e:

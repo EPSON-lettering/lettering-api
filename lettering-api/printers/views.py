@@ -437,6 +437,7 @@ class ToEpsonFileUploadView(APIView):
         }
     )
     def post(self, request):
+        print(request.FILES)
         if not request.FILES:
             return Response({'error': 'No file uploaded'}, status=status.HTTP_400_BAD_REQUEST)
 
