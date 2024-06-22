@@ -374,6 +374,8 @@ class ScannerDestinationsView(APIView):
         subject_id = json.loads(body).get('subject_id')
         access_token = json.loads(body).get('access_token')
         add_url = f'https://{host}/api/1/scanning/scanners/{subject_id}/destinations'
+        if requests.get(add_url).status_code == 200:
+            requests.delete(add_url)
         data_param = {
             'alias_name': 'lettering',
             'type': 'url',
@@ -433,7 +435,7 @@ class ToEpsonFileUploadView(APIView):
             status.HTTP_400_BAD_REQUEST: openapi.Response('편지 저장에 실패했습니다.'),
         }
     )
-    def post(self, request , username):
+    def post(self, request):
         serializer = EpsonScanSerializer(data=request.data, context={'request': request})
         if serializer.is_valid():
             serializer.save()
