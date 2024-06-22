@@ -5,7 +5,7 @@ from matching.models import Match
 import boto3
 import os
 import uuid
-
+from django.db import models
 
 AWS_ID = os.environ.get('AWS_ACCESS_KEY_ID')
 AWS_KEY = os.environ.get('AWS_SECRET_ACCESS_KEY')
@@ -30,14 +30,13 @@ class LetterSerializer(serializers.Serializer):
 
 
 class LetterModelSerializer(serializers.ModelSerializer):
+    isRead = models.BooleanField(source="is_read")
+    imageUrl = models.CharField(source="image_url")
+    createdAt = models.DateTimeField(source="created_at")
 
     class Meta:
         model = Letter
-        fields = '__all__'
-
-
-class ManualLetterSerializer(serializers.Serializer):
-    pass
+        fields = ['id', 'imageUrl', 'isRead', 'createdAt']
 
 
 class S3FileUploadSerializer(serializers.Serializer):
