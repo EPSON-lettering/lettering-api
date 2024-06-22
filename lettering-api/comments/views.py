@@ -21,8 +21,6 @@ class CommentAPIView(APIView):
         operation_summary="댓글/피드백 조회",
     )
     def get(self, request, letter_id):
-        user = request.user
-        letter: Letter = Letter.objects.get(id=letter_id)
         comments = Comment.objects.filter(letter_id=letter_id).all().order_by("created_at")
         serializer = CommentSerializer(comments, many=True)
         return Response(serializer.data, status=status.HTTP_200_OK)
@@ -39,7 +37,7 @@ class CommentAPIView(APIView):
         body = request.data
         sender: User = request.user
         letter: Letter = Letter.objects.get(id=letter_id)
-        receiver = get_receiver(letter, sender)
+        receiver = get_receiver([letter.sender, letter.receiver], sender)
         type = body['type']
 
         comment = Comment(
@@ -89,7 +87,6 @@ class CommentAPIView(APIView):
                 user.save()
 
 
-
 class ReplyAPIView(APIView):
     permission_classes = [IsAuthenticated]
 
@@ -97,8 +94,7 @@ class ReplyAPIView(APIView):
         operation_summary="답글 조회",
     )
     def get(self, request, comment_id):
-        user = request.user
-        replies = Reply.objects.filter(comment_id=comment_id).all()
+        replies = Reply.objects.filter(comment_id=comment_id).all().order_by("created_at")
         serializer = ReplySerializer(replies, many=True)
         return Response(serializer.data, status=status.HTTP_200_OK)
 
@@ -111,10 +107,15 @@ class ReplyAPIView(APIView):
         }
     )
     def post(self, request, comment_id):
-        data = request.data
-        data['comment'] = comment_id
-        serializer = ReplySerializer(data=data, context={'request': request})
-        if serializer.is_valid():
-            reply = serializer.save()
-            return Response(serializer.data, status=status.HTTP_201_CREATED)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        body = request.data
+        comment = Comment.objects.get(id=comment_id)
+        receiver = get_receiver([comment.receiver, comment.sender], request.user)
+        reply = Reply(
+            comment=comment,
+            sender=request.user,
+            receiver=receiver,
+            message=body["message"],
+            image=None
+        ).save()
+
+        return Response(ReplySerializer(reply).data, status=status.HTTP_201_CREATED)
