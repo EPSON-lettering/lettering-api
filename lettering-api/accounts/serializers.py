@@ -1,4 +1,6 @@
 from rest_framework import serializers
+
+from letters.models import Letter
 from .models import User, Language
 from oauth.models import OauthUser
 from interests.models import Interest, UserInterest
@@ -66,17 +68,20 @@ class UserSerializer(serializers.ModelSerializer):
     interests = serializers.SerializerMethodField()
     epsonEmail = serializers.EmailField(source='epson_email')
     status = serializers.IntegerField(source='status_message', read_only=True)
+    sendingLetterCount = serializers.SerializerMethodField()
 
     class Meta:
         model = User
         fields = [
             'id', 'oauthId', 'nickname', 'profileImageUrl',
             'createdAt', 'withdrawAt', 'language', 'printerStatus',
-            'withdrawReason', 'email', 'interests', 'epsonEmail', 'status'
+            'withdrawReason', 'email', 'interests', 'epsonEmail', 'status',
+            'sendingLetterCount'
         ]
 
     def __init__(self, *args, **kwargs):
         self.interests = kwargs.pop('interests', [])
+        self.sending_letter_count = kwargs.pop('sending_letter_count', 0)
         super().__init__(*args, **kwargs)
 
     def get_interests(self, obj):
@@ -84,6 +89,8 @@ class UserSerializer(serializers.ModelSerializer):
         print(f'data: {data}')
         return [InterestSerializer(interest).data for interest in self.interests]
 
+    def get_sendingLetterCount(self, obj: User):
+        return Letter.objects.filter(sender=obj).count()
 
 class LanguageSerializer(serializers.ModelSerializer):
     class Meta:
