@@ -445,11 +445,11 @@ class ToEpsonFileUploadView(APIView):
         for file_key in request.FILES:
             file = request.FILES[file_key]
             serializer = S3FileUploadSerializer(file)
-            EpsonConnectScanData.objects.create(
+            scandata = EpsonConnectScanData.objects.create(
                 user=request.user,
                 imageUrl=serializer['image_url']
             )
-            EpsonConnectScanData.save()
+            scandata.save()
             if serializer.is_valid():
                 serializer.save()
             else:
