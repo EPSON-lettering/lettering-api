@@ -4,6 +4,8 @@ from printers.models import EpsonConnectScanData
 from matching.models import Match
 import boto3
 from botocore.config import Config
+from accounts.models import User
+from accounts.serializers import UserSerializer
 import os
 import uuid
 from django.db import models
@@ -36,10 +38,19 @@ class LetterModelSerializer(serializers.ModelSerializer):
     isRead = serializers.BooleanField(source="is_read")
     imageUrl = serializers.CharField(source="image_url")
     createdAt = serializers.DateTimeField(source="created_at")
+    owner = serializers.SerializerMethodField()
 
     class Meta:
         model = Letter
-        fields = ['id', 'imageUrl', 'isRead', 'createdAt']
+        fields = ['id', 'imageUrl', 'sender', 'isRead', 'createdAt', 'owner']
+
+    def __init__(self, *args, **kwargs):
+        self.user = kwargs.pop('user', [])
+        super().__init__(*args, **kwargs)
+
+    def get_owner(self, obj):
+        user = User.objects.get(id=self.user.id)
+        return UserSerializer(user).data
 
 
 class S3FileUploadSerializer(serializers.Serializer):

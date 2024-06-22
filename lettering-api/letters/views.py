@@ -57,7 +57,23 @@ class LetterListAPI(APIView):
     def get(self, request, user_id: int):
         user = User.objects.get(id=user_id)
         letters = Letter.objects.filter(sender=user).all().order_by('-created_at')[:10]
-        serializer = LetterModelSerializer(letters, many=True)
+        serializer = LetterModelSerializer(letters, user=user, many=True)
+        return Response(serializer.data, status=200)
+
+
+class LetterGetterAPI(APIView):
+    permission_classes = [IsAuthenticated]
+
+    @swagger_auto_schema(
+        operation_summary="유저 편지 리스트 조회",
+        responses={
+            200: LetterModelSerializer()
+        }
+    )
+    def get(self, request, letter_id: int):
+        letter = Letter.objects.get(id=letter_id)
+        user = letter.sender
+        serializer = LetterModelSerializer(letter, user=user)
         return Response(serializer.data, status=200)
 
 
