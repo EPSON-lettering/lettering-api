@@ -49,7 +49,6 @@ class EpsonScanSerializer(serializers.Serializer):
         return validated_data
 
 
-
 class EpsonConnectEmailSerializer(serializers.Serializer):
     epsonEmail = serializers.CharField(source='epson_email')
 

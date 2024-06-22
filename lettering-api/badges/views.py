@@ -7,6 +7,7 @@ from drf_yasg import openapi
 from .serializers import UserBadgeSerializer
 from .models import UserBadge
 
+
 class UserBadgeAPIView(APIView):
     permission_classes = [IsAuthenticated]
 

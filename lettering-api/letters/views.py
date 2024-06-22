@@ -1,3 +1,5 @@
+from datetime import datetime, timedelta
+
 from django.db.models import Q
 from drf_yasg.utils import swagger_auto_schema
 from rest_framework.parsers import JSONParser, FormParser, MultiPartParser
@@ -10,6 +12,7 @@ from matching.models import Match
 from accounts.domain import LetterWritingStatus
 from accounts.models import User
 from notifications.models import Notification
+from badge.models import Badge , UserBadge
 from .serializers import LetterSerializer, S3FileUploadSerializer, LetterModelSerializer
 from drf_yasg import openapi
 
@@ -103,13 +106,14 @@ class LetterAPIView(APIView):
         serializer = LetterSerializer(data=request.data, context={'request': request})
         if serializer.is_valid():
             letter = serializer.save()
-            Notification.objects.create(
+            notification = Notification.objects.create(
                 user=letter.receiver,
                 letter=letter,
                 message=f'{request.user.nickname} 님의 편지가 도착했습니다.',
                 is_read=False,
                 type='received'
             )
+            notification.save()
             self.award_badge(letter.sender, '편지의 제왕')
             self.check_consistent_writing(letter.sender)
             self.update_user_level(letter.sender)
@@ -125,6 +129,7 @@ class LetterAPIView(APIView):
         )
 
         user_badge.progress += 1
+
         if user_badge.progress >= user_badge.step.required_count:
             next_step = badge.steps.filter(step_number=user_badge.step.step_number + 1).first()
             if next_step:

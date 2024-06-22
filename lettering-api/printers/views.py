@@ -176,13 +176,14 @@ class EpsonLetterIdPrintConnectAPI(APIView):
         except Letter.DoesNotExist:
             return Response({'error': 'Letter not found'}, status=status.HTTP_404_NOT_FOUND)
 
-        Notification.objects.create(
+        notification = Notification.objects.create(
             user=letter.receiver,
             letter=letter,
             message=f'{request_data.user.nickname} 님이 편지를 작성 중입니다!',
             is_read=False,
             type='print_started'
         )
+        notification.save()
 
         user = request_data.user
         user.status_message = LetterWritingStatus.PROCESSING
@@ -359,8 +360,6 @@ class ScannerDestinationsView(APIView):
         query_string = parse.urlencode(query_param)
 
         headers = {
-            'Host': host,
-            'Accept': accept,
             'Authorization': f'Basic {auth}',
             'Content-Type': 'application/x-www-form-urlencoded; charset=utf-8'
         }
@@ -454,11 +453,6 @@ class ToEpsonFileUploadView(APIView):
 
     @swagger_auto_schema(
         operation_summary="스캔한 파일 저장",
-        manual_parameters=[
-            openapi.Parameter(
-                'file', openapi.IN_FORM, type=openapi.TYPE_FILE, description='업로드할 파일'
-            ),
-        ],
         responses={
             status.HTTP_201_CREATED: openapi.Response('파일 수신 완료'),
             status.HTTP_400_BAD_REQUEST: openapi.Response('잘못된 요청')

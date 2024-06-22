@@ -1,6 +1,7 @@
 from django.db import models
 from accounts.models import User
 
+
 class Badge(models.Model):
     name = models.CharField(max_length=50)
     description = models.TextField()
@@ -8,6 +9,7 @@ class Badge(models.Model):
 
     def __str__(self):
         return self.name
+
 
 class BadgeStep(models.Model):
     badge = models.ForeignKey(Badge, related_name='steps', on_delete=models.CASCADE)
@@ -19,6 +21,7 @@ class BadgeStep(models.Model):
 
     def __str__(self):
         return f'{self.badge.name} - 단계 {self.step_number}'
+
 
 class UserBadge(models.Model):
     user = models.ForeignKey(User, related_name='user_badges', on_delete=models.CASCADE)
