@@ -404,7 +404,7 @@ class ScannerDestinationsView(APIView):
 class FileUploadView(APIView):
     permission_classes = [IsAuthenticated]
     parser_classes = [JSONParser, FormParser, MultiPartParser]
-    parser_classes = (MultiPartParser, FormParser)
+
     @swagger_auto_schema(
         operation_summary="유저가 스캐너가 없을 때 사진 업로드 후 저장",
         manual_parameters=[

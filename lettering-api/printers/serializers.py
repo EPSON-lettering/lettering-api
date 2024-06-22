@@ -42,9 +42,19 @@ class EpsonScanSerializer(serializers.Serializer):
                 user=user,
                 imageUrl=file_name,
             ).save()
+        except ClientError as e:
+            print(f"Error uploading file to S3: {e}")
+            raise serializers.ValidationError("파일 업로드에 실패했습니다.")
+
+        try:
+            scan_data = EpsonConnectScanData.objects.create(
+                user=user,
+                imageUrl=file_name,
+            )
+            scan_data.save()
         except Exception as e:
-            print(f"Error saving letter: {e}")
-            raise serializers.ValidationError("편지 저장에 실패했습니다.")
+            print(f"Error saving scan data: {e}")
+            raise serializers.ValidationError("스캔 데이터 저장에 실패했습니다.")
 
         return validated_data
 
