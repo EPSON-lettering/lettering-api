@@ -23,7 +23,7 @@ class CommentAPIView(APIView):
     def get(self, request, letter_id):
         user = request.user
         letter: Letter = Letter.objects.get(id=letter_id)
-        comments = Comment.objects.filter(letter_id=letter_id).all()
+        comments = Comment.objects.filter(letter_id=letter_id).all().order_by("created_at")
         serializer = CommentSerializer(comments, many=True)
         return Response(serializer.data, status=status.HTTP_200_OK)
 
@@ -53,10 +53,10 @@ class CommentAPIView(APIView):
         ).save()
 
         if type == 'feedback':
-            self.award_badge(comment.sender, '피드백 마스터')
+            self.award_badge(sender, '피드백 마스터')
         if type == 'chat':
-            self.award_badge(comment.sender, '답장의 제왕')
-        self.update_user_level(comment.sender)
+            self.award_badge(sender, '답장의 제왕')
+        self.update_user_level(sender)
 
         return Response(CommentSerializer(comment, sender_data=sender).data, status=201)
 
