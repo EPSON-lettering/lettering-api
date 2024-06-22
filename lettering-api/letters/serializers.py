@@ -45,10 +45,13 @@ class LetterModelSerializer(serializers.ModelSerializer):
         fields = ['id', 'imageUrl', 'sender', 'isRead', 'createdAt', 'owner']
 
     def __init__(self, *args, **kwargs):
-        self.user = kwargs.pop('user', [])
+        self.user = kwargs.pop('user', None)
         super().__init__(*args, **kwargs)
 
     def get_owner(self, obj):
+        print(f'get_owner: {self.user}')
+        if self.user is None:
+            return None
         user = User.objects.get(id=self.user.id)
         return UserSerializer(user).data
 
@@ -74,7 +77,6 @@ class S3FileUploadSerializer(serializers.Serializer):
         url = s3.generate_presigned_url(
             'get_object',
             Params={'Bucket': BUCKET_NAME, 'Key': filename},
-            ExpiresIn=3600
         )
 
         return {"file_url": url}
