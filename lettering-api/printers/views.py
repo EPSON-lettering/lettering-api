@@ -346,11 +346,13 @@ class ScannerDestinationsView(APIView):
         device = request_data.user.epson_email
         auth = base64.b64encode(f'{client_id}:{secret}'.encode()).decode()
 
-        data = {
+        query_param = {
             'grant_type': 'password',
             'username': device,
             'password': ''
         }
+
+        query_string = parse.urlencode(query_param)
 
         headers = {
             'Host': host,
@@ -359,37 +361,41 @@ class ScannerDestinationsView(APIView):
             'Content-Type': 'application/x-www-form-urlencoded; charset=utf-8'
         }
         try:
-            response = requests.post(auth_uri, data=data, headers=headers)
+            req = urllib_request.Request(auth_uri, data=query_string.encode('utf-8'), headers=headers, method='POST')
+            context = ssl.create_default_context(cafile=certifi.where())
+            with urllib_request.urlopen(req, context=context) as res:
+                body = res.read()
+        except error.HTTPError as err:
+            return Response({'error': f'{err.code}:{err.reason}:{str(err.read())}'},status=status.HTTP_400_BAD_REQUEST)
+        except error.URLError as err:
+            return Response({'error': err.reason}, status=status.HTTP_400_BAD_REQUEST)
+        except ssl.SSLError as err:
+            return Response({'error': str(err)}, status=status.HTTP_400_BAD_REQUEST)
+        subject_id = json.loads(body).get('subject_id')
+        access_token = json.loads(body).get('access_token')
+        add_url = f'https://{host}/api/1/scanning/scanners/{subject_id}/destinations'
+        data_param = {
+            'alias_name': 'lettering',
+            'type': 'url',
+            'destination': f'{os.environ.get("EPSON_SCAN_DIRECTION")}/{request_data.user.nickname}',
+        }
+        data = json.dumps(data_param)
+
+        headers = {
+            'Authorization': 'Bearer ' + access_token,
+            'Content-Type': 'application/json;charset=utf-8',
+        }
+
+        try:
+            response = requests.post(add_url,data=data, headers=headers)
+
             response.raise_for_status()
-            auth_result = response.json()
+            return Response({"success:스캔 대상 추가에 성공했습니다!"}, status=status.HTTP_200_OK)
         except requests.exceptions.RequestException as e:
+            print()
+            if response.json()['code'] == "duplicate_alias": return Response({"error": "이전에 등록했습니다."}, status=status.HTTP_400_BAD_REQUEST)
+            if response.json()['code'] == "invalid_resource ": return Response({"error": "유형이 잘못되었습니다."}, status=status.HTTP_400_BAD_REQUEST)
             return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
-        subject_id = auth_result['subject_id']
-        access_token = auth_result['access_token']
-        add_uri = f'https://{host}/api/1/scanning/scanners/{subject_id}/destinations'
-
-        if requests.get(add_uri).status_code != 200:
-            data_param = {
-                'alias_name': 'lettering',
-                'type': 'url',
-                'destination': f'{os.environ.get("EPSON_SCAN_DIRECTION")}/{request_data.user.username}',
-            }
-            data = json.dumps(data_param)
-
-            headers = {
-                'Host': host,
-                'Accept': accept,
-                'Authorization': f'Bearer {access_token}',
-                'Content-Length': str(len(data)),
-                'Content-Type': 'application/json;charset=utf-8'
-            }
-
-            try:
-                response = requests.post(add_uri, data=data, headers=headers, verify=False)
-                response.raise_for_status()
-                return Response({"success:스캔 대상 추가에 성공했습니다!"}, status=status.HTTP_200_OK)
-            except requests.exceptions.RequestException as e:
-                return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
 
 class FileUploadView(APIView):
