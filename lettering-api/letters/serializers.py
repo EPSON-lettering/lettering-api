@@ -29,6 +29,13 @@ class LetterSerializer(serializers.Serializer):
         return letter
 
 
+class LetterModelSerializer(serializers.ModelSerializer):
+
+    class Meta:
+        model = Letter
+        fields = '__all__'
+
+
 class ManualLetterSerializer(serializers.Serializer):
     pass
 
