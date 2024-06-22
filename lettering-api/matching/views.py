@@ -131,7 +131,7 @@ class MatchRequestView(APIView):
                             status=status.HTTP_401_UNAUTHORIZED)
 
         try:
-            match_request = MatchRequest.objects.get(id=request_id, receiver=request.user)
+            match_request = MatchRequest.objects.get(id=request_id)
         except MatchRequest.DoesNotExist:
             return Response({"detail": "매칭 요청을 찾을 수 없습니다."}, status=status.HTTP_404_NOT_FOUND)
 
