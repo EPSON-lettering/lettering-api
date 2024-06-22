@@ -6,8 +6,11 @@ from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
 from rest_framework import status
 from .models import Letter
+from matching.models import Match
+from accounts.domain import LetterWritingStatus
 from notifications.models import Notification
-from .serializers import LetterSerializer
+from .serializers import LetterSerializer, S3FileUploadSerializer, LetterModelSerializer
+from drf_yasg import openapi
 
 
 class CheckUserLetterAPIView(APIView):
@@ -151,3 +154,35 @@ class LetterAPIView(APIView):
             return Response(status=status.HTTP_204_NO_CONTENT)
         except Letter.DoesNotExist:
             return Response({"error": "편지를 찾을수없습니다."}, status=status.HTTP_404_NOT_FOUND)
+
+
+class LetterSendingAPI(APIView):
+    permission_classes = [IsAuthenticated]
+    parser_classes = (MultiPartParser, FormParser)
+
+    @swagger_auto_schema(
+        operation_summary="편지 이미지 전송",
+        manual_parameters=[
+            openapi.Parameter('file', openapi.IN_FORM, type=openapi.TYPE_FILE, description='저장할 파일')
+        ],
+    )
+    def post(self, request):
+        s3_serializer = S3FileUploadSerializer(data=request.data)
+        if s3_serializer.is_valid() is False:
+            return Response(s3_serializer.errors[0], status=status.HTTP_400_BAD_REQUEST)
+        file_url = s3_serializer.save()['file_url']
+        match = (Match.objects
+                 .filter(requester=request.user, withdraw_reason__isnull=True)
+                 .order_by("-created_at")
+                 .first()
+                 )
+        letter = Letter.objects.create(
+            sender=request.user,
+            receiver=match.acceptor,
+            match=match,
+            image_url=file_url
+        )
+        letter.save()
+        request.user.change_letter_status(LetterWritingStatus.BEFORE)
+        letter_serializer = LetterModelSerializer(letter)
+        return Response({"letter": letter_serializer.data}, status=status.HTTP_200_OK)
