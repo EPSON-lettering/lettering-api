@@ -24,7 +24,7 @@ class User(AbstractBaseUser):
     is_loggined = models.BooleanField(default=False)
     withdraw_reason = models.TextField(null=True)
     email = models.EmailField()
-    status_message = models.CharField(max_length=50, null=True, blank=True)
+    status_message = models.IntegerField(null=True, blank=True)
     level = models.IntegerField(default=1)
 
     def __str__(self):
