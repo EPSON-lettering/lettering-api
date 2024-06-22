@@ -12,6 +12,7 @@ from rest_framework.utils import json
 from rest_framework.views import APIView
 from notifications.models import Notification
 from .serializers import EpsonConnectPrintSerializer, EpsonScanSerializer, EpsonConnectEmailSerializer
+from letters.serializers import S3FileUploadSerializer
 from urllib import parse, error
 from urllib import request as urllib_request
 import base64, requests, os
@@ -443,8 +444,12 @@ class ToEpsonFileUploadView(APIView):
 
         for file_key in request.FILES:
             file = request.FILES[file_key]
-            serializer = EpsonScanSerializer(data={'imagefile': file}, context={'request': request})
-
+            serializer = S3FileUploadSerializer(file)
+            EpsonConnectScanData.objects.create(
+                user=request.user,
+                imageUrl=serializer['image_url']
+            )
+            EpsonConnectScanData.save()
             if serializer.is_valid():
                 serializer.save()
             else:
