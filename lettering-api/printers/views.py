@@ -23,6 +23,9 @@ from accounts.domain import LetterWritingStatus
 from .models import EpsonConnectScanData
 import ssl
 import certifi
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 EPSON_URL = os.environ.get('EPSON_URL')
@@ -338,13 +341,13 @@ class ScannerDestinationsView(APIView):
         operation_summary="앱손 프린터 스캔 대상 추가",
         responses={200: "available: boolean, error: string"}
     )
-    def post(self, request_data):
+    def post(self, request):
         host = HOST
         accept = ACCEPT
         auth_uri = EPSON_URL
         client_id = CLIENT_ID
         secret = SECRET
-        device = request_data.user.epson_email
+        device = request.user.epson_email
         auth = base64.b64encode(f'{client_id}:{secret}'.encode()).decode()
 
         query_param = {
@@ -361,24 +364,32 @@ class ScannerDestinationsView(APIView):
             'Authorization': f'Basic {auth}',
             'Content-Type': 'application/x-www-form-urlencoded; charset=utf-8'
         }
+
+
         try:
             req = urllib_request.Request(auth_uri, data=query_string.encode('utf-8'), headers=headers, method='POST')
             context = ssl.create_default_context(cafile=certifi.where())
             with urllib_request.urlopen(req, context=context) as res:
                 body = res.read()
         except error.HTTPError as err:
-            return Response({'error': f'{err.code}:{err.reason}:{str(err.read())}'},status=status.HTTP_400_BAD_REQUEST)
+            return Response({'error': f'{err.code}:{err.reason}:{str(err.read())}'}, status=status.HTTP_400_BAD_REQUEST)
         except error.URLError as err:
             return Response({'error': err.reason}, status=status.HTTP_400_BAD_REQUEST)
         except ssl.SSLError as err:
             return Response({'error': str(err)}, status=status.HTTP_400_BAD_REQUEST)
-        subject_id = json.loads(body).get('subject_id')
-        access_token = json.loads(body).get('access_token')
+
+        if res.status != HTTPStatus.OK:
+            return Response({'error': f'{res.status}:{res.reason}'}, status=status.HTTP_400_BAD_REQUEST)
+
+        auth_data = json.loads(body)
+        subject_id = auth_data.get('subject_id')
+        access_token = auth_data.get('access_token')
+
+        alias_name = f'letter_{request.user.id}'
         add_url = f'https://{host}/api/1/scanning/scanners/{subject_id}/destinations'
-        if requests.get(add_url).status_code == 200:
-            requests.delete(add_url)
+
         data_param = {
-            'alias_name': 'letter',
+            'alias_name': alias_name,
             'type': 'url',
             'destination': f'{os.environ.get("EPSON_SCAN_DIRECTION")}',
         }
@@ -389,22 +400,36 @@ class ScannerDestinationsView(APIView):
             'Content-Type': 'application/json;charset=utf-8',
         }
 
-        try:
-            response = requests.post(add_url,data=data, headers=headers)
 
+        try:
+            response = requests.post(add_url, data=data, headers=headers)
             response.raise_for_status()
-            return Response({"success:스캔 대상 추가에 성공했습니다!"}, status=status.HTTP_200_OK)
+            return Response({"success": "스캔 대상 추가에 성공했습니다!"}, status=status.HTTP_200_OK)
         except requests.exceptions.RequestException as e:
-            print()
-            if response.json()['code'] == "duplicate_alias": return Response({"error": "이전에 등록했습니다."}, status=status.HTTP_200_OK)
-            if response.json()['code'] == "invalid_resource ": return Response({"error": "유형이 잘못되었습니다."}, status=status.HTTP_400_BAD_REQUEST)
-            return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
+            if response.content:
+                try:
+                    response_json = response.json()
+                    error_code = response_json.get('code')
+                    error_message = response_json.get('message')
+                except ValueError:
+                    error_code = None
+                    error_message = response.content.decode()
+
+            else:
+                error_code = None
+                error_message = str(e)
+
+            if error_code == "duplicate_alias":
+                return Response({"error": "이전에 등록했습니다."}, status=status.HTTP_200_OK)
+            if error_code == "invalid_resource":
+                return Response({"error": "유형이 잘못되었습니다."}, status=status.HTTP_400_BAD_REQUEST)
+            return Response({'error': error_message}, status=status.HTTP_400_BAD_REQUEST)
 
 
 class FileUploadView(APIView):
     permission_classes = [IsAuthenticated]
     parser_classes = [JSONParser, FormParser, MultiPartParser]
-
+    parser_classes = (MultiPartParser, FormParser)
     @swagger_auto_schema(
         operation_summary="유저가 스캐너가 없을 때 사진 업로드 후 저장",
         manual_parameters=[
@@ -425,17 +450,22 @@ class FileUploadView(APIView):
 
 
 class ToEpsonFileUploadView(APIView):
-    permission_classes = [IsAuthenticated]
-    parser_classes = [JSONParser, FormParser, MultiPartParser]
+    parser_classes = [MultiPartParser, FormParser]
 
     @swagger_auto_schema(
-        operation_summary="Epson 프린터 스캔 후 저장",
+        operation_summary="스캔한 파일 저장",
+        manual_parameters=[
+            openapi.Parameter(
+                'file', openapi.IN_FORM, type=openapi.TYPE_FILE, description='업로드할 파일'
+            ),
+        ],
         responses={
-            status.HTTP_201_CREATED: openapi.Response('message: 전송이 완료되었습니다'),
-            status.HTTP_400_BAD_REQUEST: openapi.Response('error: 잘못된 요청입니다.'),
+            status.HTTP_201_CREATED: openapi.Response('파일 수신 완료'),
+            status.HTTP_400_BAD_REQUEST: openapi.Response('잘못된 요청')
         }
     )
     def post(self, request):
+        logger.debug(f"Request files: {request.FILES}")
         if not request.FILES:
             return Response({'error': 'No file uploaded'}, status=status.HTTP_400_BAD_REQUEST)
 
@@ -446,7 +476,9 @@ class ToEpsonFileUploadView(APIView):
 
             if serializer.is_valid():
                 serializer.save()
+                logger.debug(f"File {file_key} saved successfully.")
             else:
+                logger.error(f"Error in serializer: {serializer.errors}")
                 return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
         return Response({"message": "저장이 완료되었습니다"}, status=status.HTTP_201_CREATED)

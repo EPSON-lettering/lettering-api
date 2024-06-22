@@ -5,7 +5,7 @@ from botocore.exceptions import ClientError
 from rest_framework import serializers
 from letters.models import Letter
 from .models import EpsonConnectScanData
-
+from django.conf import settings
 
 class EpsonConnectPrintSerializer(serializers.Serializer):
     imageFile = serializers.ImageField(required=True)
@@ -18,7 +18,6 @@ class EpsonScanSerializer(serializers.Serializer):
         imagefile = validated_data['imagefile']
         user = self.context['request'].user
 
-        # S3에 파일 업로드
         s3 = boto3.client(
             's3',
             aws_access_key_id=settings.AWS_ACCESS_KEY_ID,
@@ -34,17 +33,9 @@ class EpsonScanSerializer(serializers.Serializer):
                 file_name,
             )
         except ClientError as e:
-            print(f"Error uploading file to S3: {e}")
             raise serializers.ValidationError("파일 업로드에 실패했습니다.")
-
-        try:
-            EpsonConnectScanData.objects.create(
-                user=user,
-                imageUrl=file_name,
-            ).save()
-        except ClientError as e:
-            print(f"Error uploading file to S3: {e}")
-            raise serializers.ValidationError("파일 업로드에 실패했습니다.")
+        except Exception as e:
+            raise serializers.ValidationError("파일 업로드 중 오류가 발생했습니다.")
 
         try:
             scan_data = EpsonConnectScanData.objects.create(
@@ -53,10 +44,10 @@ class EpsonScanSerializer(serializers.Serializer):
             )
             scan_data.save()
         except Exception as e:
-            print(f"Error saving scan data: {e}")
             raise serializers.ValidationError("스캔 데이터 저장에 실패했습니다.")
 
         return validated_data
+
 
 
 class EpsonConnectEmailSerializer(serializers.Serializer):

@@ -23,8 +23,8 @@ urlpatterns = [
     path('status', ChangeUserWritingSatusAPI.as_view(), name='change-writing-status'),
     path('prints/auth',EpsonConnectEmailAPIView.as_view(),name='epson-email-auth'),
     path('scan', ScannerDestinationsView.as_view(),name='epson-scan-api'),
-    path('scan/fileSave/', ToEpsonFileUploadView.as_view(), name='epson-file-upload'),
-    path('scan/fileUpload/', FileUploadView.as_view(), name='epson-file-upload-with-files'),
+    path('scan/file/save/', ToEpsonFileUploadView.as_view(), name='epson-file-upload'),
+    path('scan/file/upload/', FileUploadView.as_view(), name='epson-file-upload-with-files'),
     path('swagger/', schema_view.with_ui('swagger', cache_timeout=0), name='schema-swagger-ui'),
     path('redoc/', schema_view.with_ui('redoc', cache_timeout=0), name='schema-redoc'),
     path('scan/data',ScanDataAPIView.as_view(),name="scan-data-api" )
