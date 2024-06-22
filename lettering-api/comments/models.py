@@ -24,4 +24,3 @@ class Reply(models.Model):
     message = models.TextField()
     image = models.ImageField(upload_to='reply_images/', null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
-
