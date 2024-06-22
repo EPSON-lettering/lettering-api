@@ -1,22 +1,51 @@
 from rest_framework import serializers
 from .models import Comment, Reply
 from accounts.models import User
+from accounts.serializers import UserSerializer
 from notifications.models import Notification
+
 
 class CommentUserSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
         fields = ['id', 'nickname', 'profile_image_url']
 
+
 class CommentSerializer(serializers.ModelSerializer):
     createdAt = serializers.DateTimeField(source='created_at')
     image = serializers.ImageField(required=False)
-    sender = serializers.PrimaryKeyRelatedField(queryset=User.objects.all())
-    receiver = serializers.PrimaryKeyRelatedField(queryset=User.objects.all())
+    sender = UserSerializer()
+    receiver = UserSerializer()
+    latest_reply = serializers.SerializerMethodField()
 
     class Meta:
         model = Comment
-        fields = ['id', 'letter', 'sender', 'receiver', 'message', 'image', 'createdAt', 'type']
+        fields = [
+            'id',
+            'letter',
+            'sender',
+            'receiver',
+            'message',
+            'image',
+            'createdAt',
+            'type',
+            'latest_reply',
+        ]
+
+    def __init__(self, *args, **kwargs):
+        self.sender_data = kwargs.pop('sender_data', None)
+        super().__init__(*args, **kwargs)
+
+    def get_sender(self, obj):
+        if self.sender_data is None:
+            return None
+        return UserSerializer(self.sender_data).data
+
+    def get_latest_reply(self, obj: Comment):
+        latest_reply = obj.replies.order_by('-created_at').first()
+        if latest_reply:
+            return ReplySerializer(latest_reply).data
+        return None
 
     def create(self, validated_data):
         comment = super().create(validated_data)
@@ -28,11 +57,12 @@ class CommentSerializer(serializers.ModelSerializer):
         )
         return comment
 
+
 class ReplySerializer(serializers.ModelSerializer):
     createdAt = serializers.DateTimeField(source='created_at')
     image = serializers.ImageField(required=False)
-    sender = serializers.PrimaryKeyRelatedField(queryset=User.objects.all())
-    receiver = serializers.PrimaryKeyRelatedField(queryset=User.objects.all())
+    sender = UserSerializer()
+    receiver = UserSerializer()
 
     class Meta:
         model = Reply

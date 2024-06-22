@@ -4,11 +4,15 @@ from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
 from rest_framework import status
+
+from accounts.models import User
 from .models import Comment, Reply
 from letters.models import Letter
 from notifications.models import Notification
 from .serializers import CommentSerializer, ReplySerializer
 from badges.models import Badge, UserBadge
+from .services import get_receiver
+
 
 class CommentAPIView(APIView):
     permission_classes = [IsAuthenticated]
@@ -18,7 +22,8 @@ class CommentAPIView(APIView):
     )
     def get(self, request, letter_id):
         user = request.user
-        comments = Comment.objects.filter(letter_id=letter_id).all()
+        letter: Letter = Letter.objects.get(id=letter_id)
+        comments = Comment.objects.filter(letter_id=letter_id).all().order_by("created_at")
         serializer = CommentSerializer(comments, many=True)
         return Response(serializer.data, status=status.HTTP_200_OK)
 
@@ -31,19 +36,29 @@ class CommentAPIView(APIView):
         }
     )
     def post(self, request, letter_id):
-        data = request.data
-        data['letter'] = letter_id
-        serializer = CommentSerializer(data=data, context={'request': request})
-        if serializer.is_valid():
-            comment = serializer.save()
-            if comment.type == 'feedback':
-                self.award_badge(comment.sender, '피드백 마스터')
+        body = request.data
+        sender: User = request.user
+        letter: Letter = Letter.objects.get(id=letter_id)
+        receiver = get_receiver(letter, sender)
+        type = body['type']
 
-            elif comment.type == 'chat':
-                self.award_badge(comment.sender, '답장의 제왕')
-            self.update_user_level(comment.sender)
-            return Response(serializer.data, status=status.HTTP_201_CREATED)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        comment = Comment(
+            type=body['type'],
+            letter=letter,
+            sender=sender,
+            receiver=receiver,
+            message=body['message'],
+            # image=body['image'],
+            image=None,
+        ).save()
+
+        if type == 'feedback':
+            self.award_badge(sender, '피드백 마스터')
+        if type == 'chat':
+            self.award_badge(sender, '답장의 제왕')
+        self.update_user_level(sender)
+
+        return Response(CommentSerializer(comment, sender_data=sender).data, status=201)
 
     def award_badge(self, user, badge_name):
         badge = Badge.objects.get(name=badge_name)
