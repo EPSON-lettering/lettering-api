@@ -75,8 +75,9 @@ class EpsonLetterIdPrintConnectAPI(APIView):
         }
 
         try:
-            req = request.Request(auth_uri, data=query_string.encode('utf-8'), headers=headers, method='POST')
-            with request.urlopen(req) as res:
+            req = urllib_request.Request(auth_uri, data=query_string.encode('utf-8'), headers=headers, method='POST')
+            context = ssl.create_default_context(cafile=certifi.where())
+            with urllib_request.urlopen(req, context=context) as res:
                 body = res.read()
         except error.HTTPError as err:
             return Response({'error': f'{err.code}:{err.reason}:{str(err.read())}'}, status=status.HTTP_400_BAD_REQUEST)
@@ -104,7 +105,7 @@ class EpsonLetterIdPrintConnectAPI(APIView):
         }
 
         try:
-            req = request.Request(job_uri, data=data.encode('utf-8'), headers=headers, method='POST')
+            req = urllib_request.Request(job_uri, data=data.encode('utf-8'), headers=headers, method='POST')
             with request.urlopen(req) as res:
                 body = res.read()
         except error.HTTPError as err:
@@ -132,8 +133,9 @@ class EpsonLetterIdPrintConnectAPI(APIView):
 
         try:
             with open(local_file_path, 'rb') as f:
-                req = request.Request(upload_uri, data=f, headers=headers, method='POST')
-                with request.urlopen(req) as res:
+                req = urllib_request.Request(upload_uri, data=f.read(), headers=headers, method='POST')
+                context = ssl.create_default_context(cafile=certifi.where())
+                with urllib_request.urlopen(req, context=context) as res:
                     body = res.read()
         except error.HTTPError as err:
             return Response({'error': f'{err.code}:{err.reason}:{str(err.read())}'}, status=status.HTTP_400_BAD_REQUEST)
@@ -153,8 +155,9 @@ class EpsonLetterIdPrintConnectAPI(APIView):
         }
 
         try:
-            req = request.Request(print_uri, data=data.encode('utf-8'), headers=headers, method='POST')
-            with request.urlopen(req) as res:
+            req = urllib_request.Request(print_uri, data=data.encode('utf-8'), headers=headers, method='POST')
+            context = ssl.create_default_context(cafile=certifi.where())
+            with urllib_request.urlopen(req, context=context) as res:
                 body = res.read()
         except error.HTTPError as err:
             return Response({'error': f'{err.code}:{err.reason}:{str(err.read())}'}, status=status.HTTP_400_BAD_REQUEST)
@@ -176,8 +179,6 @@ class EpsonLetterIdPrintConnectAPI(APIView):
             is_read=False,
             type='print_started'
         )
-
-
 
         user = request.user
         user.status_message = LetterWritingStatus.PROCESSING
@@ -237,8 +238,9 @@ class EpsonPrintConnectAPI(APIView):
         }
 
         try:
-            req = request.Request(auth_uri, data=query_string.encode('utf-8'), headers=headers, method='POST')
-            with request.urlopen(req) as res:
+            req = urllib_request.Request(auth_uri, data=query_string.encode('utf-8'), headers=headers, method='POST')
+            context = ssl.create_default_context(cafile=certifi.where())
+            with urllib_request.urlopen(req, context=context) as res:
                 body = res.read()
         except error.HTTPError as err:
             return Response({'error': f'{err.code}:{err.reason}:{str(err.read())}'}, status=status.HTTP_400_BAD_REQUEST)
@@ -266,8 +268,9 @@ class EpsonPrintConnectAPI(APIView):
         }
 
         try:
-            req = request.Request(job_uri, data=data.encode('utf-8'), headers=headers, method='POST')
-            with request.urlopen(req) as res:
+            req = urllib_request.Request(job_uri, data=data.encode('utf-8'), headers=headers, method='POST')
+            context = ssl.create_default_context(cafile=certifi.where())
+            with urllib_request.urlopen(req, context=context) as res:
                 body = res.read()
         except error.HTTPError as err:
             return Response({'error': f'{err.code}:{err.reason}:{str(err.read())}'}, status=status.HTTP_400_BAD_REQUEST)
@@ -292,8 +295,9 @@ class EpsonPrintConnectAPI(APIView):
         }
 
         try:
-            req = request.Request(upload_uri, data=file, headers=headers, method='POST')
-            with request.urlopen(req) as res:
+            req = urllib_request.Request(upload_uri, data=file.read(), headers=headers, method='POST')
+            context = ssl.create_default_context(cafile=certifi.where())
+            with urllib_request.urlopen(req, context=context) as res:
                 body = res.read()
         except error.HTTPError as err:
             return Response({'error': f'{err.code}:{err.reason}:{str(err.read())}'}, status=status.HTTP_400_BAD_REQUEST)
@@ -312,8 +316,9 @@ class EpsonPrintConnectAPI(APIView):
         }
 
         try:
-            req = request.Request(print_uri, data=data.encode('utf-8'), headers=headers, method='POST')
-            with request.urlopen(req) as res:
+            req = urllib_request.Request(auth_uri, data=query_string.encode('utf-8'), headers=headers, method='POST')
+            context = ssl.create_default_context(cafile=certifi.where())
+            with urllib_request.urlopen(req, context=context) as res:
                 body = res.read()
         except error.HTTPError as err:
             return Response({'error': f'{err.code}:{err.reason}:{str(err.read())}'}, status=status.HTTP_400_BAD_REQUEST)
