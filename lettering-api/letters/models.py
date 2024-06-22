@@ -9,4 +9,4 @@ class Letter(models.Model):
     image_url = models.CharField(null=False)
     is_read = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)
-    match = models.OneToOneField(Match, on_delete=models.CASCADE)
+    match = models.ForeignKey(Match, on_delete=models.CASCADE)
