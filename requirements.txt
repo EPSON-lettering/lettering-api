@@ -16,3 +16,4 @@ cryptography
 django-cors-headers
 requests
 Pillow
+certifi

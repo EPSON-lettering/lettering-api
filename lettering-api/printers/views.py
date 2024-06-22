@@ -12,13 +12,16 @@ from rest_framework.utils import json
 from rest_framework.views import APIView
 from notifications.models import Notification
 from .serializers import EpsonConnectPrintSerializer, EpsonScanSerializer, EpsonConnectEmailSerializer
-from urllib import request, parse, error
+from urllib import parse, error
+from urllib import request as urllib_request
 import base64, requests, os
 from PIL import Image
 from letters.models import Letter
 from accounts.models import User
 from accounts.domain import LetterWritingStatus
 from .models import EpsonConnectScanData
+import ssl
+import certifi
 
 
 EPSON_URL = os.environ.get('EPSON_URL')
@@ -438,9 +441,10 @@ class EpsonConnectEmailAPIView(APIView):
             status.HTTP_400_BAD_REQUEST: 'error : 잘못된 요청입니다!',
         }
     )
-    def post(self, request_data):
-        device = request_data.data['epsonEmail']
-        serializer = EpsonConnectEmailSerializer(data=request_data.data, context={'request': request_data})
+    def post(self, request):
+        device = request.data['epsonEmail']
+        serializer = EpsonConnectEmailSerializer(data=request.data, context={'request': request})
+
         # 인증
         auth_uri = EPSON_URL
         auth = base64.b64encode(f'{CLIENT_ID}:{SECRET}'.encode()).decode()
@@ -458,21 +462,25 @@ class EpsonConnectEmailAPIView(APIView):
         }
 
         try:
-            req = request.Request(auth_uri, data=query_string.encode('utf-8'), headers=headers, method='POST')
-            with request.urlopen(req) as res:
+            req = urllib_request.Request(auth_uri, data=query_string.encode('utf-8'), headers=headers, method='POST')
+            context = ssl.create_default_context(cafile=certifi.where())
+            with urllib_request.urlopen(req, context=context) as res:
                 body = res.read()
+                res_status = res.status
         except error.HTTPError as err:
             return Response({'error': f'{err.code}:{err.reason}:{str(err.read())}'}, status=status.HTTP_400_BAD_REQUEST)
         except error.URLError as err:
             return Response({'error': err.reason}, status=status.HTTP_400_BAD_REQUEST)
-        except SSLCertVerificationError as err:
-            return Response({'error': err.verify_message}, status=status.HTTP_400_BAD_REQUEST)
-        if res.status != HTTPStatus.OK:
-            return Response({'error': f'{res.status}:{res.reason}'}, status=status.HTTP_400_BAD_REQUEST)
+        except ssl.SSLError as err:
+            return Response({'error': str(err)}, status=status.HTTP_400_BAD_REQUEST)
+
+        if res_status != HTTPStatus.OK:
+            return Response({'error': f'{res_status}:{res.reason}'}, status=status.HTTP_400_BAD_REQUEST)
+
         if serializer.is_valid():
             serializer.save()
-            return Response({"message : 연결이 완료 되었습니다!"}, status=status.HTTP_201_CREATED)
-        return Response({"error : 잘못된 요청입니다!"}, status=status.HTTP_400_BAD_REQUEST)
+            return Response({"message": "연결이 완료 되었습니다!"}, status=status.HTTP_201_CREATED)
+        return Response({"error": "잘못된 요청입니다!"}, status=status.HTTP_400_BAD_REQUEST)
 
 
 class ScanDataAPIView(APIView):
