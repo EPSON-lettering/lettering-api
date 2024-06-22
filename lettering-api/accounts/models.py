@@ -30,5 +30,5 @@ class User(AbstractBaseUser):
         return self.nickname
 
     def change_letter_status(self, status):
-        self.status_message = status
+        self.status_message = status.parse()
         self.save()
