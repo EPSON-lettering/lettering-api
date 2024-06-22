@@ -15,7 +15,7 @@ class EpsonScanSerializer(serializers.Serializer):
     imagefile = serializers.FileField()
 
     def create(self, validated_data):
-        imagefile = validated_data.get('imagefile')
+        imagefile = validated_data['imagefile']
         user = self.context['request'].user
 
         # S3에 파일 업로드
@@ -41,9 +41,6 @@ class EpsonScanSerializer(serializers.Serializer):
                 user=user,
                 imageUrl=file_name,
             ).save()
-        except Match.DoesNotExist:
-            print(f"Match object not found for user: {user}")
-            raise serializers.ValidationError("매칭 정보를 찾을 수 없습니다.")
         except Exception as e:
             print(f"Error saving letter: {e}")
             raise serializers.ValidationError("편지 저장에 실패했습니다.")
