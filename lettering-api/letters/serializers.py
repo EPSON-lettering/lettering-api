@@ -30,9 +30,9 @@ class LetterSerializer(serializers.Serializer):
 
 
 class LetterModelSerializer(serializers.ModelSerializer):
-    isRead = models.BooleanField(source="is_read")
-    imageUrl = models.CharField(source="image_url")
-    createdAt = models.DateTimeField(source="created_at")
+    isRead = serializers.BooleanField(source="is_read")
+    imageUrl = serializers.CharField(source="image_url")
+    createdAt = serializers.DateTimeField(source="created_at")
 
     class Meta:
         model = Letter
