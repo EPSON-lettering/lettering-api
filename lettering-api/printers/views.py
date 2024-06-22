@@ -493,5 +493,8 @@ class ScanDataAPIView(APIView):
     def get(self, request_data):
         ScanData = EpsonConnectScanData.objects.filter(user=request_data.user).order_by('-id')[0]
         imageUrl = ScanData.imageUrl
-        return Response({"imageUrl": str(imageUrl)})
+        rid = ScanData.id
+        return Response({'success' : {"imageUrl": str(imageUrl), "id": str(id)}})
+
+
 
