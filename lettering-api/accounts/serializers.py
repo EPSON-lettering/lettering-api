@@ -62,18 +62,17 @@ class UserSerializer(serializers.ModelSerializer):
     createdAt = serializers.DateTimeField(source='created_at', read_only=True)
     withdrawAt = serializers.DateTimeField(source='withdraw_at', read_only=True)
     printerStatus = serializers.BooleanField(source='printer_status', read_only=True)
-    isLoggined = serializers.BooleanField(source='is_loggined', read_only=True)
     withdrawReason = serializers.CharField(source='withdraw_reason', read_only=True)
     interests = serializers.SerializerMethodField()
     epsonEmail = serializers.EmailField(source='epson_email')
-    status = serializers.IntegerField(source='status_message')
+    status = serializers.CharField(source='status_message', read_only=True)
 
     class Meta:
         model = User
         fields = [
             'id', 'oauthId', 'nickname', 'profileImageUrl',
             'createdAt', 'withdrawAt', 'language', 'printerStatus',
-            'isLoggined', 'withdrawReason', 'email', 'interests', 'epsonEmail', 'status'
+            'withdrawReason', 'email', 'interests', 'epsonEmail', 'status'
         ]
 
     def __init__(self, *args, **kwargs):

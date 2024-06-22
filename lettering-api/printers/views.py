@@ -17,6 +17,7 @@ import base64, requests, os
 from PIL import Image
 from letters.models import Letter
 from accounts.models import User
+from accounts.domain import LetterWritingStatus
 from .models import EpsonConnectScanData
 
 
@@ -25,11 +26,6 @@ CLIENT_ID = os.environ.get('EPSON_CLIENT_ID')
 SECRET = os.environ.get('EPSON_SECRET')
 HOST = os.environ.get('EPSON_HOST')
 ACCEPT = os.environ.get('EPSON_ACCEPT')
-
-LETTER_STATUES = {
-    "before_writing": 0,
-    "process_writing": 1,
-}
 
 
 class EpsonLetterIdPrintConnectAPI(APIView):
@@ -181,7 +177,7 @@ class EpsonLetterIdPrintConnectAPI(APIView):
 
 
         user = request.user
-        user.status_message = LETTER_STATUES["process_writing"]
+        user.status_message = LetterWritingStatus.PROCESSING
         user.save()
 
         return Response({'message': "프린트가 성공적으로 완료되었습니다"}, status=status.HTTP_200_OK)
@@ -197,7 +193,7 @@ class ChangeUserWritingSatusAPI(APIView):
     )
     def patch(self, request):
         user = User.objects.get(id=request.user.id)
-        user.status_message = LETTER_STATUES["process_writing"]
+        user.change_letter_status(LetterWritingStatus.PROCESSING)
         return Response({"message": None}, status=200)
 
 
