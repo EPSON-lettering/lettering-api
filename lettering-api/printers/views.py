@@ -427,35 +427,29 @@ class FileUploadView(APIView):
 class ToEpsonFileUploadView(APIView):
     permission_classes = [IsAuthenticated]
     parser_classes = [JSONParser, FormParser, MultiPartParser]
-    parser_classes = (MultiPartParser, FormParser)
 
     @swagger_auto_schema(
         operation_summary="Epson 프린터 스캔 후 저장",
         responses={
             status.HTTP_201_CREATED: openapi.Response('message: 전송이 완료되었습니다'),
-            status.HTTP_400_BAD_REQUEST: openapi.Response('매칭 정보를 찾을 수 없습니다'),
-            status.HTTP_400_BAD_REQUEST: openapi.Response('편지 저장에 실패했습니다.'),
+            status.HTTP_400_BAD_REQUEST: openapi.Response('error: 잘못된 요청입니다.'),
         }
     )
     def post(self, request):
-        print(request.FILES)
         if not request.FILES:
             return Response({'error': 'No file uploaded'}, status=status.HTTP_400_BAD_REQUEST)
 
         for file_key in request.FILES:
             file = request.FILES[file_key]
-            serializer = S3FileUploadSerializer(file)
-            scandata = EpsonConnectScanData.objects.create(
-                user=request.user,
-                imageUrl=serializer['image_url']
-            )
-            scandata.save()
+            data = {'imagefile': file}
+            serializer = EpsonScanSerializer(data=data, context={'request': request})
+
             if serializer.is_valid():
                 serializer.save()
             else:
                 return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
-        return Response({"message": "저장이 완료돠었습니다"}, status=status.HTTP_201_CREATED)
+        return Response({"message": "저장이 완료되었습니다"}, status=status.HTTP_201_CREATED)
 
 
 class EpsonConnectEmailAPIView(APIView):
