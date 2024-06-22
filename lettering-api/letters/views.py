@@ -56,7 +56,7 @@ class LetterListAPI(APIView):
     )
     def get(self, request, user_id: int):
         user = User.objects.get(id=user_id)
-        letters = Letter.objects.filter(receiver=user).all().order_by('-created_at')[:10]
+        letters = Letter.objects.filter(sender=user).all().order_by('-created_at')[:10]
         serializer = LetterModelSerializer(letters, many=True)
         return Response(serializer.data, status=200)
 
