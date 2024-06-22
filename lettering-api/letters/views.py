@@ -8,6 +8,7 @@ from rest_framework import status
 from .models import Letter
 from matching.models import Match
 from accounts.domain import LetterWritingStatus
+from accounts.models import User
 from notifications.models import Notification
 from .serializers import LetterSerializer, S3FileUploadSerializer, LetterModelSerializer
 from drf_yasg import openapi
@@ -42,6 +43,22 @@ class CheckOtherPersonAPIView(APIView):
         letters = Letter.objects.filter(receiver=user).all().order_by('-created_at')[:3]
         serializer = LetterSerializer(letters, many=True)
         return Response(serializer.data, status=status.HTTP_200_OK)
+
+
+class LetterListAPI(APIView):
+    permission_classes = [IsAuthenticated]
+
+    @swagger_auto_schema(
+        operation_summary="유저 편지 리스트 조회",
+        responses={
+            200: LetterModelSerializer(many=True)
+        }
+    )
+    def get(self, request, user_id: int):
+        user = User.objects.get(id=user_id)
+        letters = Letter.objects.filter(receiver=user).all().order_by('-created_at')[:10]
+        serializer = LetterModelSerializer(letters, many=True)
+        return Response(serializer.data, status=200)
 
 
 class LetterAPIView(APIView):
@@ -182,7 +199,8 @@ class LetterSendingAPI(APIView):
             match=match,
             image_url=file_url
         )
-        letter.save()
+        print(f'user: {request.user}')
         request.user.change_letter_status(LetterWritingStatus.BEFORE)
+        letter.save()
         letter_serializer = LetterModelSerializer(letter)
         return Response({"letter": letter_serializer.data}, status=status.HTTP_200_OK)
