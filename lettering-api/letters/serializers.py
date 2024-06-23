@@ -61,6 +61,7 @@ class S3FileUploadSerializer(serializers.Serializer):
 
     def create(self, validated_data):
         file = validated_data.get('file')
+        print(f'file in S3FileUploadSerializer: {file}')
         s3 = boto3.client(
             's3',
             config=config,

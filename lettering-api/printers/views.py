@@ -24,15 +24,17 @@ from .models import EpsonConnectScanData
 import ssl
 import certifi
 import logging
+from .services import get_auth_headers
 
 logger = logging.getLogger(__name__)
-
 
 EPSON_URL = os.environ.get('EPSON_URL')
 CLIENT_ID = os.environ.get('EPSON_CLIENT_ID')
 SECRET = os.environ.get('EPSON_SECRET')
 HOST = os.environ.get('EPSON_HOST')
 ACCEPT = os.environ.get('EPSON_ACCEPT')
+
+AUTH_URI = base64.b64encode(f'{CLIENT_ID}:{SECRET}'.encode()).decode()
 
 
 class EpsonLetterIdPrintConnectAPI(APIView):
@@ -64,7 +66,7 @@ class EpsonLetterIdPrintConnectAPI(APIView):
 
         # 1. Authentication
         auth_uri = EPSON_URL
-        auth = auth = base64.b64encode(f'{CLIENT_ID}:{SECRET}'.encode()).decode()
+        auth = base64.b64encode(f'{CLIENT_ID}:{SECRET}'.encode()).decode()
 
         query_param = {
             'grant_type': 'password',
@@ -364,7 +366,6 @@ class ScannerDestinationsView(APIView):
             'Content-Type': 'application/x-www-form-urlencoded; charset=utf-8'
         }
 
-
         try:
             req = urllib_request.Request(auth_uri, data=query_string.encode('utf-8'), headers=headers, method='POST')
             context = ssl.create_default_context(cafile=certifi.where())
@@ -399,7 +400,6 @@ class ScannerDestinationsView(APIView):
             'Content-Type': 'application/json;charset=utf-8',
         }
 
-
         try:
             response = requests.post(add_url, data=data, headers=headers)
             response.raise_for_status()
@@ -429,6 +429,7 @@ class FileUploadView(APIView):
     permission_classes = [IsAuthenticated]
     parser_classes = [JSONParser, FormParser, MultiPartParser]
     parser_classes = (MultiPartParser, FormParser)
+
     @swagger_auto_schema(
         operation_summary="유저가 스캐너가 없을 때 사진 업로드 후 저장",
         manual_parameters=[
@@ -440,7 +441,7 @@ class FileUploadView(APIView):
             status.HTTP_400_BAD_REQUEST: openapi.Response('편지 저장에 실패했습니다.'),
         }
     )
-    def post(self, request ):
+    def post(self, request):
         serializer = EpsonScanSerializer(data=request.data, context={'request': request})
         if serializer.is_valid():
             serializer.save()
@@ -448,7 +449,7 @@ class FileUploadView(APIView):
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
-class ToEpsonFileUploadView(APIView):
+class ScanDataGetterAPI(APIView):
     parser_classes = [MultiPartParser, FormParser]
 
     @swagger_auto_schema(
@@ -459,25 +460,36 @@ class ToEpsonFileUploadView(APIView):
         }
     )
     def post(self, request):
-        logger.debug(f"Received request: {request}")
-        logger.debug(f"Request method: {request.method}")
-        logger.debug(f"Request headers: {request.headers}")
-        logger.debug(f"Request body: {request.body}")
-        logger.debug(f"Request FILES: {request.FILES}")
+        # logger.debug(f"Received request: {request}")
+        # logger.debug(f"Request method: {request.method}")
+        # logger.debug(f"Request headers: {request.headers}")
+        # logger.debug(f"Request body: {request.body}")
+        # logger.debug(f"Request FILES: {request.FILES}")
         if not request.FILES:
             return Response({'error': 'No file uploaded'}, status=status.HTTP_400_BAD_REQUEST)
 
-        for file_key in request.FILES:
-            file = request.FILES[file_key]
-            data = {'imagefile': file}
-            serializer = EpsonScanSerializer(data=data, context={'request': request})
+        print(request.FILES)
+        files = request.FILES.getlist('0')
+        for file in files:
+            print(f'uploaded_letter_image: {file}')
+            s3_serial = S3FileUploadSerializer(data={'file': file})
+            if s3_serial.is_valid() is None:
+                print(f'error: {s3_serial.errors}')
+                return Response(status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            s3_serial.save()
+            print(f's3: {s3_serial.data}')
 
-            if serializer.is_valid():
-                serializer.save()
-                logger.debug(f"File {file_key} saved successfully.")
-            else:
-                logger.error(f"Error in serializer: {serializer.errors}")
-                return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        # for file_key in request.FILES:
+        #     file = request.FILES[file_key]
+        #     data = {'imagefile': file}
+        #     serializer = EpsonScanSerializer(data=data, context={'request': request})
+        #
+        #     if serializer.is_valid():
+        #         serializer.save()
+        #         logger.debug(f"File {file_key} saved successfully.")
+        #     else:
+        #         logger.error(f"Error in serializer: {serializer.errors}")
+        #         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
         return Response({"message": "저장이 완료되었습니다"}, status=status.HTTP_201_CREATED)
 
@@ -539,7 +551,7 @@ class ScanDataAPIView(APIView):
     @swagger_auto_schema(
         operation_summary="최근에 스캔한 혹은 가져온 이미지 URL 가져오기",
         responses={
-            status.HTTP_200_OK : "imageUrl",
+            status.HTTP_200_OK: "imageUrl",
         }
     )
     def get(self, request_data):
