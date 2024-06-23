@@ -12,7 +12,7 @@ from matching.models import Match
 from accounts.domain import LetterWritingStatus
 from accounts.models import User
 from notifications.models import Notification
-from badge.models import Badge , UserBadge
+from badges.models import Badge, UserBadge
 from .serializers import LetterSerializer, S3FileUploadSerializer, LetterModelSerializer
 from drf_yasg import openapi
 
