@@ -188,7 +188,7 @@ class GetMatchDetailsView(APIView):
                  )
 
         if match is None:
-            return Response(None, status=status.HTTP_404_NOT_FOUND)
+            return Response(None, status=200)
 
         acceptor_id = match.acceptor.id
         acceptor = User.objects.get(id=acceptor_id)
