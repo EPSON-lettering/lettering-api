@@ -1,7 +1,6 @@
 from django.urls import include, path
 from rest_framework import routers
 from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
-
 router = routers.DefaultRouter()
 
 urlpatterns = [
@@ -14,6 +13,7 @@ urlpatterns = [
     path('match/', include("matching.urls")),
     path('printer/', include("printers.urls")),
     path('letter/', include("letters.urls")),
+    path('badge/', include("badges.urls")),
     path('notification/', include("notifications.urls")),
     path('comment/', include("comments.urls")),
 ]
