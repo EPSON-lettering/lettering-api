@@ -4,11 +4,20 @@ from matching.models import Match
 from botocore.exceptions import ClientError
 from rest_framework import serializers
 from letters.models import Letter
-from .models import EpsonConnectScanData
+from .models import EpsonConnectScanData, EpsonGlobalImageShare
 from django.conf import settings
+
 
 class EpsonConnectPrintSerializer(serializers.Serializer):
     imageFile = serializers.ImageField(required=True)
+
+
+class EpsonSharedSerializer(serializers.ModelSerializer):
+    imageUrl = serializers.ImageField(source="image_url")
+
+    class Meta:
+        model = EpsonGlobalImageShare
+        fields = ['imageUrl']
 
 
 class EpsonScanSerializer(serializers.Serializer):

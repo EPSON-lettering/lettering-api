@@ -61,7 +61,6 @@ class S3FileUploadSerializer(serializers.Serializer):
 
     def create(self, validated_data):
         file = validated_data.get('file')
-        print(f'file in S3FileUploadSerializer: {file}')
         s3 = boto3.client(
             's3',
             config=config,
@@ -69,7 +68,7 @@ class S3FileUploadSerializer(serializers.Serializer):
             aws_secret_access_key=AWS_KEY,
             region_name=REGION
         )
-        filename = f'{uuid.uuid4()}.png'
+        filename = file.name
         s3.upload_fileobj(
             file,
             BUCKET_NAME,
