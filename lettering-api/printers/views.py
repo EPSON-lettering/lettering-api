@@ -10,6 +10,7 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.utils import json
 from rest_framework.views import APIView
+from rest_framework.request import Request
 from notifications.models import Notification
 from .serializers import EpsonConnectPrintSerializer, EpsonScanSerializer, EpsonConnectEmailSerializer
 from letters.serializers import S3FileUploadSerializer
@@ -460,11 +461,11 @@ class ScanDataGetterAPI(APIView):
             status.HTTP_400_BAD_REQUEST: openapi.Response('잘못된 요청')
         }
     )
-    def post(self, request):
-        print(f"Request FILES: {request.FILES}")
+    def post(self, request: Request):
+        logger.info(request.headers)
 
         if not request.FILES:
-            return Response({'error': 'No file uploaded'}, status=status.HTTP_400_BAD_REQUEST)
+            return Response(status=status.HTTP_400_BAD_REQUEST)
 
         file_urls = []
         for key in request.FILES:

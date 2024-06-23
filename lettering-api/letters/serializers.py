@@ -15,7 +15,7 @@ AWS_KEY = os.environ.get('AWS_SECRET_ACCESS_KEY')
 BUCKET_NAME = os.environ.get('AWS_STORAGE_BUCKET_NAME')
 REGION = os.environ.get('AWS_S3_REGION_NAME')
 config = Config(signature_version='v4')
-
+CF_URL: str = os.environ.get('CF_URL')
 
 class LetterSerializer(serializers.Serializer):
     scanData_id = serializers.IntegerField(read_only=True)
@@ -61,6 +61,7 @@ class S3FileUploadSerializer(serializers.Serializer):
 
     def create(self, validated_data):
         file = validated_data.get('file')
+        filename = file.name
         s3 = boto3.client(
             's3',
             config=config,
@@ -68,15 +69,9 @@ class S3FileUploadSerializer(serializers.Serializer):
             aws_secret_access_key=AWS_KEY,
             region_name=REGION
         )
-        filename = file.name
         s3.upload_fileobj(
             file,
             BUCKET_NAME,
             filename
         )
-        url = s3.generate_presigned_url(
-            'get_object',
-            Params={'Bucket': BUCKET_NAME, 'Key': filename},
-        )
-
-        return {"file_url": url}
+        return {"file_url": f'{CF_URL}/{filename}'}
