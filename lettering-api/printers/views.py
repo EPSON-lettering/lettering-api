@@ -1,6 +1,5 @@
 from http import HTTPStatus
 from ssl import SSLCertVerificationError
-
 import boto3
 from drf_yasg import openapi
 from drf_yasg.utils import swagger_auto_schema
@@ -36,6 +35,46 @@ ACCEPT = os.environ.get('EPSON_ACCEPT')
 
 AUTH_URI = base64.b64encode(f'{CLIENT_ID}:{SECRET}'.encode()).decode()
 
+def epson_auth(device):
+    auth = base64.b64encode(f'{CLIENT_ID}:{SECRET}'.encode()).decode()
+    query_param = {
+        'grant_type': 'password',
+        'username': device,
+        'password': ''
+    }
+    query_string = parse.urlencode(query_param)
+    headers = {
+        'Authorization': 'Basic ' + auth,
+        'Content-Type': 'application/x-www-form-urlencoded; charset=utf-8'
+    }
+    try:
+        req = urllib_request.Request(EPSON_URL, data=query_string.encode('utf-8'), headers=headers, method='POST')
+        context = ssl.create_default_context(cafile=certifi.where())
+        with urllib_request.urlopen(req, context=context) as res:
+            if res.status != HTTPStatus.OK:
+                raise ValueError(f'Authentication failed: {res.status} - {res.reason}')
+            return json.loads(res.read())
+    except error.HTTPError as err:
+        raise ValueError(f'{err.code}: {err.reason}')
+    except error.URLError as err:
+        raise ValueError(f'{err.reason}')
+    except ssl.SSLError as err:
+        raise ValueError(str(err))
+
+def epson_request(url, data, headers, method='POST'):
+    try:
+        req = urllib_request.Request(url, data=data.encode('utf-8'), headers=headers, method=method)
+        context = ssl.create_default_context(cafile=certifi.where())
+        with urllib_request.urlopen(req, context=context) as res:
+            if res.status not in (HTTPStatus.OK, HTTPStatus.CREATED):
+                raise ValueError(f'HTTP request failed: {res.status} - {res.reason}')
+            return json.loads(res.read())
+    except error.HTTPError as err:
+        raise ValueError(f'{err.code}: {err.reason}')
+    except error.URLError as err:
+        raise ValueError(f'{err.reason}')
+    except ssl.SSLError as err:
+        raise ValueError(str(err))
 
 class EpsonLetterIdPrintConnectAPI(APIView):
     permission_classes = [IsAuthenticated]
@@ -54,145 +93,69 @@ class EpsonLetterIdPrintConnectAPI(APIView):
         }
     )
     def post(self, request_data, letter_id):
-        letter = Letter.objects.get(id=letter_id)
-        device = letter.receiver.epson_email
-        image_url = letter.image_url
-        s3 = boto3.resource('s3')
-        bucket = s3.Bucket(os.environ.get('AWS_STORAGE_BUCKET_NAME'))
-        obj = bucket.Object(image_url)
-        response = obj.get()
-        file_stream = response['Body']
-        file = Image.open(file_stream)
-
-        # 1. Authentication
-        auth_uri = EPSON_URL
-        auth = base64.b64encode(f'{CLIENT_ID}:{SECRET}'.encode()).decode()
-
-        query_param = {
-            'grant_type': 'password',
-            'username': device,
-            'password': ''
-        }
-        query_string = parse.urlencode(query_param)
-
-        headers = {
-            'Authorization': 'Basic ' + auth,
-            'Content-Type': 'application/x-www-form-urlencoded; charset=utf-8'
-        }
-
         try:
-            req = urllib_request.Request(auth_uri, data=query_string.encode('utf-8'), headers=headers, method='POST')
-            context = ssl.create_default_context(cafile=certifi.where())
-            with urllib_request.urlopen(req, context=context) as res:
-                body = res.read()
-        except error.HTTPError as err:
-            return Response({'error': f'{err.code}:{err.reason}:{str(err.read())}'}, status=status.HTTP_400_BAD_REQUEST)
-        except error.URLError as err:
-            return Response({'error': err.reason}, status=status.HTTP_400_BAD_REQUEST)
+            letter = Letter.objects.get(id=letter_id)
+            device = letter.receiver.epson_email
+            image_url = letter.image_url
+            s3 = boto3.resource('s3')
+            bucket = s3.Bucket(os.environ.get('AWS_STORAGE_BUCKET_NAME'))
+            obj = bucket.Object(image_url)
+            response = obj.get()
+            file_stream = response['Body']
+            file = Image.open(file_stream)
 
-        if res.status != HTTPStatus.OK:
-            return Response({'error': f'{res.status}:{res.reason}'}, status=status.HTTP_400_BAD_REQUEST)
-        auth_data = json.loads(body)
-        subject_id = auth_data.get('subject_id')
-        access_token = auth_data.get('access_token')
-        # 프린트에게 전달할 id 및 Url 생성
+            # Authentication
+            auth_data = epson_auth(device)
+            subject_id = auth_data.get('subject_id')
+            access_token = auth_data.get('access_token')
 
-        job_uri = f'https://{HOST}/api/1/printing/printers/{subject_id}/jobs'
+            job_uri = f'https://{HOST}/api/1/printing/printers/{subject_id}/jobs'
+            job_data = json.dumps({'job_name': 'Print', 'print_mode': 'photo'})
+            headers = {
+                'Authorization': 'Bearer ' + access_token,
+                'Content-Type': 'application/json;charset=utf-8'
+            }
+            job_response = epson_request(job_uri, job_data, headers)
+            job_id = job_response.get('id')
+            base_uri = job_response.get('upload_uri')
 
-        data_param = {
-            'job_name': 'Print',
-            'print_mode': 'photo'
-        }
-        data = json.dumps(data_param)
+            local_file_path = file.name
+            _, ext = os.path.splitext(local_file_path)
+            file_name = '1' + ext
+            upload_uri = base_uri + '&File=' + file_name
 
-        headers = {
-            'Authorization': 'Bearer ' + access_token,
-            'Content-Type': 'application/json;charset=utf-8'
-        }
-
-        try:
-            req = urllib_request.Request(job_uri, data=data.encode('utf-8'), headers=headers, method='POST')
-            with request.urlopen(req) as res:
-                body = res.read()
-        except error.HTTPError as err:
-            return Response({'error': f'{err.code}:{err.reason}:{str(err.read())}'}, status=status.HTTP_400_BAD_REQUEST)
-        except error.URLError as err:
-            return Response({'error': err.reason}, status=status.HTTP_400_BAD_REQUEST)
-
-        if res.status != HTTPStatus.CREATED:
-            return Response({'error': f'{res.status}:{res.reason}'}, status=status.HTTP_400_BAD_REQUEST)
-        job_data = json.loads(body)
-
-        job_id = job_data.get('id')
-        base_uri = job_data.get('upload_uri')
-
-        # 프린트 파일  업로드
-        local_file_path = file.name
-        _, ext = os.path.splitext(local_file_path)
-        file_name = '1' + ext
-        upload_uri = base_uri + '&File=' + file_name
-
-        headers = {
-            'Content-Length': str(os.path.getsize(local_file_path)),
-            'Content-Type': 'application/octet-stream'
-        }
-
-        try:
+            headers = {
+                'Content-Length': str(os.path.getsize(local_file_path)),
+                'Content-Type': 'application/octet-stream'
+            }
             with open(local_file_path, 'rb') as f:
                 req = urllib_request.Request(upload_uri, data=f.read(), headers=headers, method='POST')
                 context = ssl.create_default_context(cafile=certifi.where())
                 with urllib_request.urlopen(req, context=context) as res:
-                    body = res.read()
-        except error.HTTPError as err:
-            return Response({'error': f'{err.code}:{err.reason}:{str(err.read())}'}, status=status.HTTP_400_BAD_REQUEST)
-        except error.URLError as err:
-            return Response({'error': err.reason}, status=status.HTTP_400_BAD_REQUEST)
+                    if res.status != HTTPStatus.OK:
+                        raise ValueError(f'File upload failed: {res.status} - {res.reason}')
 
-        if res.status != HTTPStatus.OK:
-            return Response({'error': f'{res.status}:{res.reason}'}, status=status.HTTP_400_BAD_REQUEST)
-        # 파일 출력
+            print_uri = f'https://{HOST}/api/1/printing/printers/{subject_id}/jobs/{job_id}/print'
+            print_response = epson_request(print_uri, '', headers)
 
-        print_uri = f'https://{HOST}/api/1/printing/printers/{subject_id}/jobs/{job_id}/print'
-        data = ''
+            notification = Notification.objects.create(
+                user=letter.receiver,
+                letter=letter,
+                message=f'{request_data.user.nickname} 님이 편지를 작성 중입니다!',
+                is_read=False,
+                type='print_started'
+            )
+            notification.save()
 
-        headers = {
-            'Authorization': 'Bearer ' + access_token,
-            'Content-Type': 'application/json; charset=utf-8'
-        }
+            user = request_data.user
+            user.status_message = LetterWritingStatus.PROCESSING
+            user.save()
 
-        try:
-            req = urllib_request.Request(print_uri, data=data.encode('utf-8'), headers=headers, method='POST')
-            context = ssl.create_default_context(cafile=certifi.where())
-            with urllib_request.urlopen(req, context=context) as res:
-                body = res.read()
-        except error.HTTPError as err:
-            return Response({'error': f'{err.code}:{err.reason}:{str(err.read())}'}, status=status.HTTP_400_BAD_REQUEST)
-        except error.URLError as err:
-            return Response({'error': err.reason}, status=status.HTTP_400_BAD_REQUEST)
-
-        if res.status != HTTPStatus.OK:
-            return Response({'error': f'{res.status}:{res.reason}'}, status=status.HTTP_400_BAD_REQUEST)
-
-        try:
-            letter = Letter.objects.get(id=letter_id)
+            return Response({'message': "프린트가 성공적으로 완료되었습니다"}, status=status.HTTP_200_OK)
         except Letter.DoesNotExist:
             return Response({'error': 'Letter not found'}, status=status.HTTP_404_NOT_FOUND)
-
-        notification = Notification.objects.create(
-            user=letter.receiver,
-            letter=letter,
-            message=f'{request_data.user.nickname} 님이 편지를 작성 중입니다!',
-            is_read=False,
-            type='print_started'
-        )
-        notification.save()
-
-        user = request_data.user
-        user.status_message = LetterWritingStatus.PROCESSING
-        user.save()
-
-        return Response({'message': "프린트가 성공적으로 완료되었습니다"}, status=status.HTTP_200_OK)
-
+        except ValueError as e:
+            return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
 class ChangeUserWritingSatusAPI(APIView):
 
@@ -206,7 +169,6 @@ class ChangeUserWritingSatusAPI(APIView):
         user = User.objects.get(id=request.user.id)
         user.change_letter_status(LetterWritingStatus.PROCESSING)
         return Response({"message": None}, status=200)
-
 
 class EpsonPrintConnectAPI(APIView):
     permission_classes = [IsAuthenticated]
@@ -226,116 +188,44 @@ class EpsonPrintConnectAPI(APIView):
         }
     )
     def post(self, request_data):
-        file = request_data.FILES.get('file')
-        device = request_data.user.epson_email
-        # 1. Authentication
-        auth_uri = EPSON_URL
-        auth = base64.b64encode(f'{CLIENT_ID}:{SECRET}'.encode()).decode()
-
-        query_param = {
-            'grant_type': 'password',
-            'username': device,
-            'password': ''
-        }
-        query_string = parse.urlencode(query_param)
-
-        headers = {
-            'Authorization': 'Basic ' + auth,
-            'Content-Type': 'application/x-www-form-urlencoded; charset=utf-8'
-        }
-
         try:
-            req = urllib_request.Request(auth_uri, data=query_string.encode('utf-8'), headers=headers, method='POST')
-            context = ssl.create_default_context(cafile=certifi.where())
-            with urllib_request.urlopen(req, context=context) as res:
-                body = res.read()
-        except error.HTTPError as err:
-            return Response({'error': f'{err.code}:{err.reason}:{str(err.read())}'}, status=status.HTTP_400_BAD_REQUEST)
-        except error.URLError as err:
-            return Response({'error': err.reason}, status=status.HTTP_400_BAD_REQUEST)
+            file = request_data.FILES.get('file')
+            device = request_data.user.epson_email
 
-        if res.status != HTTPStatus.OK:
-            return Response({'error': f'{res.status}:{res.reason}'}, status=status.HTTP_400_BAD_REQUEST)
-        auth_data = json.loads(body)
-        subject_id = auth_data.get('subject_id')
-        access_token = auth_data.get('access_token')
-        # 프린트에게 전달할 id 및 Url 생성
+            auth_data = epson_auth(device)
+            subject_id = auth_data.get('subject_id')
+            access_token = auth_data.get('access_token')
 
-        job_uri = f'https://{HOST}/api/1/printing/printers/{subject_id}/jobs'
+            job_uri = f'https://{HOST}/api/1/printing/printers/{subject_id}/jobs'
+            job_data = json.dumps({'job_name': 'Print', 'print_mode': 'photo'})
+            headers = {
+                'Authorization': 'Bearer ' + access_token,
+                'Content-Type': 'application/json;charset=utf-8'
+            }
+            job_response = epson_request(job_uri, job_data, headers)
+            job_id = job_response.get('id')
+            base_uri = job_response.get('upload_uri')
 
-        data_param = {
-            'job_name': 'Print',
-            'print_mode': 'photo'
-        }
-        data = json.dumps(data_param)
+            _, ext = os.path.splitext(file.name)
+            file_name = '1' + ext
+            upload_uri = base_uri + '&File=' + file_name
 
-        headers = {
-            'Authorization': 'Bearer ' + access_token,
-            'Content-Type': 'application/json;charset=utf-8'
-        }
-
-        try:
-            req = urllib_request.Request(job_uri, data=data.encode('utf-8'), headers=headers, method='POST')
-            context = ssl.create_default_context(cafile=certifi.where())
-            with urllib_request.urlopen(req, context=context) as res:
-                body = res.read()
-        except error.HTTPError as err:
-            return Response({'error': f'{err.code}:{err.reason}:{str(err.read())}'}, status=status.HTTP_400_BAD_REQUEST)
-        except error.URLError as err:
-            return Response({'error': err.reason}, status=status.HTTP_400_BAD_REQUEST)
-
-        if res.status != HTTPStatus.CREATED:
-            return Response({'error': f'{res.status}:{res.reason}'}, status=status.HTTP_400_BAD_REQUEST)
-        job_data = json.loads(body)
-
-        job_id = job_data.get('id')
-        base_uri = job_data.get('upload_uri')
-
-        # 프린트 파일  업로드
-        _, ext = os.path.splitext(file.name)
-        file_name = '1' + ext
-        upload_uri = base_uri + '&File=' + file_name
-
-        headers = {
-            'Content-Length': str(file.size),
-            'Content-Type': 'application/octet-stream'
-        }
-
-        try:
+            headers = {
+                'Content-Length': str(file.size),
+                'Content-Type': 'application/octet-stream'
+            }
             req = urllib_request.Request(upload_uri, data=file.read(), headers=headers, method='POST')
             context = ssl.create_default_context(cafile=certifi.where())
             with urllib_request.urlopen(req, context=context) as res:
-                body = res.read()
-        except error.HTTPError as err:
-            return Response({'error': f'{err.code}:{err.reason}:{str(err.read())}'}, status=status.HTTP_400_BAD_REQUEST)
-        except error.URLError as err:
-            return Response({'error': err.reason}, status=status.HTTP_400_BAD_REQUEST)
-        if res.status != HTTPStatus.OK:
-            return Response({'error': f'{res.status}:{res.reason}'}, status=status.HTTP_400_BAD_REQUEST)
-        # 파일 출력
+                if res.status != HTTPStatus.OK:
+                    raise ValueError(f'File upload failed: {res.status} - {res.reason}')
 
-        print_uri = f'https://{HOST}/api/1/printing/printers/{subject_id}/jobs/{job_id}/print'
-        data = ''
+            print_uri = f'https://{HOST}/api/1/printing/printers/{subject_id}/jobs/{job_id}/print'
+            print_response = epson_request(print_uri, '', headers)
 
-        headers = {
-            'Authorization': 'Bearer ' + access_token,
-            'Content-Type': 'application/json; charset=utf-8'
-        }
-
-        try:
-            req = urllib_request.Request(print_uri, data=query_string.encode('utf-8'), headers=headers, method='POST')
-            context = ssl.create_default_context(cafile=certifi.where())
-            with urllib_request.urlopen(req, context=context) as res:
-                body = res.read()
-        except error.HTTPError as err:
-            return Response({'error': f'{err.code}:{err.reason}:{str(err.read())}'}, status=status.HTTP_400_BAD_REQUEST)
-        except error.URLError as err:
-            return Response({'error': err.reason}, status=status.HTTP_400_BAD_REQUEST)
-
-        if res.status != HTTPStatus.OK:
-            return Response({'error': f'{res.status}:{res.reason}'}, status=status.HTTP_400_BAD_REQUEST)
-        return Response({'message : 프린트가 성공적으로 완료되었습니다'}, status=status.HTTP_200_OK)
-
+            return Response({'message': "프린트가 성공적으로 완료되었습니다"}, status=status.HTTP_200_OK)
+        except ValueError as e:
+            return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
 class ScannerDestinationsView(APIView):
     permission_classes = [IsAuthenticated]
@@ -345,62 +235,25 @@ class ScannerDestinationsView(APIView):
         responses={200: "available: boolean, error: string"}
     )
     def post(self, request):
-        host = HOST
-        accept = ACCEPT
-        auth_uri = EPSON_URL
-        client_id = CLIENT_ID
-        secret = SECRET
-        device = request.user.epson_email
-        auth = base64.b64encode(f'{client_id}:{secret}'.encode()).decode()
-
-        query_param = {
-            'grant_type': 'password',
-            'username': device,
-            'password': ''
-        }
-
-        query_string = parse.urlencode(query_param)
-
-        headers = {
-            'Authorization': f'Basic {auth}',
-            'Content-Type': 'application/x-www-form-urlencoded; charset=utf-8'
-        }
-
         try:
-            req = urllib_request.Request(auth_uri, data=query_string.encode('utf-8'), headers=headers, method='POST')
-            context = ssl.create_default_context(cafile=certifi.where())
-            with urllib_request.urlopen(req, context=context) as res:
-                body = res.read()
-        except error.HTTPError as err:
-            return Response({'error': f'{err.code}:{err.reason}:{str(err.read())}'}, status=status.HTTP_400_BAD_REQUEST)
-        except error.URLError as err:
-            return Response({'error': err.reason}, status=status.HTTP_400_BAD_REQUEST)
-        except ssl.SSLError as err:
-            return Response({'error': str(err)}, status=status.HTTP_400_BAD_REQUEST)
+            device = request.user.epson_email
 
-        if res.status != HTTPStatus.OK:
-            return Response({'error': f'{res.status}:{res.reason}'}, status=status.HTTP_400_BAD_REQUEST)
+            auth_data = epson_auth(device)
+            subject_id = auth_data.get('subject_id')
+            access_token = auth_data.get('access_token')
 
-        auth_data = json.loads(body)
-        subject_id = auth_data.get('subject_id')
-        access_token = auth_data.get('access_token')
-
-        alias_name = f'letter_{request.user.id}'
-        add_url = f'https://{host}/api/1/scanning/scanners/{subject_id}/destinations'
-
-        data_param = {
-            'alias_name': alias_name,
-            'type': 'url',
-            'destination': f'{os.environ.get("EPSON_SCAN_DIRECTION")}',
-        }
-        data = json.dumps(data_param)
-
-        headers = {
-            'Authorization': 'Bearer ' + access_token,
-            'Content-Type': 'application/json;charset=utf-8',
-        }
-
-        try:
+            alias_name = f'letter_{request.user.id}'
+            add_url = f'https://{HOST}/api/1/scanning/scanners/{subject_id}/destinations'
+            data_param = {
+                'alias_name': alias_name,
+                'type': 'url',
+                'destination': f'{os.environ.get("EPSON_SCAN_DIRECTION")}',
+            }
+            data = json.dumps(data_param)
+            headers = {
+                'Authorization': 'Bearer ' + access_token,
+                'Content-Type': 'application/json;charset=utf-8',
+            }
             response = requests.post(add_url, data=data, headers=headers)
             response.raise_for_status()
             return Response({"success": "스캔 대상 추가에 성공했습니다!"}, status=status.HTTP_200_OK)
@@ -424,7 +277,6 @@ class ScannerDestinationsView(APIView):
                 return Response({"error": "유형이 잘못되었습니다."}, status=status.HTTP_400_BAD_REQUEST)
             return Response({'error': error_message}, status=status.HTTP_400_BAD_REQUEST)
 
-
 class FileUploadView(APIView):
     permission_classes = [IsAuthenticated]
     parser_classes = [JSONParser, FormParser, MultiPartParser]
@@ -447,7 +299,6 @@ class FileUploadView(APIView):
             serializer.save()
             return Response({"message": "다운로드가 완료되었습니다."}, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-
 
 class ScanDataGetterAPI(APIView):
     permission_classes = [IsAuthenticated]
@@ -480,7 +331,6 @@ class ScanDataGetterAPI(APIView):
 
         return Response({"message": "저장이 완료되었습니다", "file_urls": file_urls}, status=status.HTTP_201_CREATED)
 
-
 class EpsonConnectEmailAPIView(APIView):
     permission_classes = [IsAuthenticated]
 
@@ -493,46 +343,19 @@ class EpsonConnectEmailAPIView(APIView):
         }
     )
     def post(self, request):
-        device = request.data['epsonEmail']
-        serializer = EpsonConnectEmailSerializer(data=request.data, context={'request': request})
-
-        # 인증
-        auth_uri = EPSON_URL
-        auth = base64.b64encode(f'{CLIENT_ID}:{SECRET}'.encode()).decode()
-
-        query_param = {
-            'grant_type': 'password',
-            'username': device,
-            'password': ''
-        }
-        query_string = parse.urlencode(query_param)
-
-        headers = {
-            'Authorization': 'Basic ' + auth,
-            'Content-Type': 'application/x-www-form-urlencoded; charset=utf-8'
-        }
-
         try:
-            req = urllib_request.Request(auth_uri, data=query_string.encode('utf-8'), headers=headers, method='POST')
-            context = ssl.create_default_context(cafile=certifi.where())
-            with urllib_request.urlopen(req, context=context) as res:
-                body = res.read()
-                res_status = res.status
-        except error.HTTPError as err:
-            return Response({'error': f'{err.code}:{err.reason}:{str(err.read())}'}, status=status.HTTP_400_BAD_REQUEST)
-        except error.URLError as err:
-            return Response({'error': err.reason}, status=status.HTTP_400_BAD_REQUEST)
-        except ssl.SSLError as err:
-            return Response({'error': str(err)}, status=status.HTTP_400_BAD_REQUEST)
+            device = request.data['epsonEmail']
+            serializer = EpsonConnectEmailSerializer(data=request.data, context={'request': request})
 
-        if res_status != HTTPStatus.OK:
-            return Response({'error': f'{res_status}:{res.reason}'}, status=status.HTTP_400_BAD_REQUEST)
+            # Authentication
+            auth_data = epson_auth(device)
 
-        if serializer.is_valid():
-            serializer.save()
-            return Response({"message": "연결이 완료 되었습니다!"}, status=status.HTTP_201_CREATED)
-        return Response({"error": "잘못된 요청입니다!"}, status=status.HTTP_400_BAD_REQUEST)
-
+            if serializer.is_valid():
+                serializer.save()
+                return Response({"message": "연결이 완료 되었습니다!"}, status=status.HTTP_201_CREATED)
+            return Response({"error": "잘못된 요청입니다!"}, status=status.HTTP_400_BAD_REQUEST)
+        except ValueError as e:
+            return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
 class ScanDataAPIView(APIView):
     @swagger_auto_schema(
@@ -545,4 +368,4 @@ class ScanDataAPIView(APIView):
         ScanData = EpsonConnectScanData.objects.filter(user=request_data.user).order_by('-id')[0]
         imageUrl = ScanData.imageUrl
         rid = ScanData.id
-        return Response({"imageUrl": str(imageUrl), "id": str(id)}, status=200)
+        return Response({"imageUrl": str(imageUrl), "id": str(rid)}, status=200)

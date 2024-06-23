@@ -69,7 +69,7 @@ class S3FileUploadSerializer(serializers.Serializer):
             aws_secret_access_key=AWS_KEY,
             region_name=REGION
         )
-        filename = f'{uuid.uuid1()}.png'
+        filename = f'{uuid.uuid4()}.png'
         s3.upload_fileobj(
             file,
             BUCKET_NAME,

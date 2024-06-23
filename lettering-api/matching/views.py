@@ -56,7 +56,6 @@ class MatchView(APIView):
         ).values_list('receiver_id', flat=True)
 
         matched_users = Match.objects.filter(
-            Q(requester=user) | Q(acceptor=user),
             state=True,
             withdraw_reason__isnull=True
         ).values_list('requester_id', 'acceptor_id')
@@ -79,7 +78,7 @@ class MatchView(APIView):
             language__isnull=False,
             userinterest__interest__in=user.userinterest_set.values_list('interest', flat=True)
         ).exclude(
-            Q(id__in=rejected_users) | Q(id__in=matched_user_ids) | Q(id__in=ended_user_ids)
+            Q(id=user.id) | Q(id__in=rejected_users) | Q(id__in=matched_user_ids) | Q(id__in=ended_user_ids)
         ).distinct()
 
         best_match = None
