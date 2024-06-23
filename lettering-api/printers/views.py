@@ -450,6 +450,7 @@ class FileUploadView(APIView):
 
 
 class ScanDataGetterAPI(APIView):
+    permission_classes = [IsAuthenticated]
     parser_classes = [MultiPartParser, FormParser]
 
     @swagger_auto_schema(
@@ -460,38 +461,24 @@ class ScanDataGetterAPI(APIView):
         }
     )
     def post(self, request):
-        # logger.debug(f"Received request: {request}")
-        # logger.debug(f"Request method: {request.method}")
-        # logger.debug(f"Request headers: {request.headers}")
-        # logger.debug(f"Request body: {request.body}")
-        # logger.debug(f"Request FILES: {request.FILES}")
+        print(f"Request FILES: {request.FILES}")
+
         if not request.FILES:
             return Response({'error': 'No file uploaded'}, status=status.HTTP_400_BAD_REQUEST)
 
-        print(request.FILES)
-        files = request.FILES.getlist('0')
-        for file in files:
-            print(f'uploaded_letter_image: {file}')
-            s3_serial = S3FileUploadSerializer(data={'file': file})
-            if s3_serial.is_valid() is None:
-                print(f'error: {s3_serial.errors}')
-                return Response(status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-            s3_serial.save()
-            print(f's3: {s3_serial.data}')
+        file_urls = []
+        for key in request.FILES:
+            files = request.FILES.getlist(key)
+            for file in files:
 
-        # for file_key in request.FILES:
-        #     file = request.FILES[file_key]
-        #     data = {'imagefile': file}
-        #     serializer = EpsonScanSerializer(data=data, context={'request': request})
-        #
-        #     if serializer.is_valid():
-        #         serializer.save()
-        #         logger.debug(f"File {file_key} saved successfully.")
-        #     else:
-        #         logger.error(f"Error in serializer: {serializer.errors}")
-        #         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+                s3_serial = S3FileUploadSerializer(data={'file': file})
+                if not s3_serial.is_valid():
+                    return Response(s3_serial.errors, status=status.HTTP_400_BAD_REQUEST)
 
-        return Response({"message": "저장이 완료되었습니다"}, status=status.HTTP_201_CREATED)
+                upload_data = s3_serial.save()
+                file_urls.append(upload_data["file_url"])
+
+        return Response({"message": "저장이 완료되었습니다", "file_urls": file_urls}, status=status.HTTP_201_CREATED)
 
 
 class EpsonConnectEmailAPIView(APIView):
