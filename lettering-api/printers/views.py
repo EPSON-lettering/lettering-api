@@ -25,6 +25,7 @@ import ssl
 import certifi
 import logging
 from .services import get_auth_headers
+from .models import EpsonGlobalImageShare
 
 logger = logging.getLogger(__name__)
 
@@ -450,7 +451,6 @@ class FileUploadView(APIView):
 
 
 class ScanDataGetterAPI(APIView):
-    permission_classes = [IsAuthenticated]
     parser_classes = [MultiPartParser, FormParser]
 
     @swagger_auto_schema(
@@ -476,9 +476,10 @@ class ScanDataGetterAPI(APIView):
                     return Response(s3_serial.errors, status=status.HTTP_400_BAD_REQUEST)
 
                 upload_data = s3_serial.save()
+                EpsonGlobalImageShare(image_url=upload_data["file_url"]).save()
                 file_urls.append(upload_data["file_url"])
 
-        return Response({"message": "저장이 완료되었습니다", "file_urls": file_urls}, status=status.HTTP_201_CREATED)
+        return Response(status=200)
 
 
 class EpsonConnectEmailAPIView(APIView):
@@ -542,7 +543,7 @@ class ScanDataAPIView(APIView):
         }
     )
     def get(self, request_data):
-        ScanData = EpsonConnectScanData.objects.filter(user=request_data.user).order_by('-id')[0]
-        imageUrl = ScanData.imageUrl
-        rid = ScanData.id
-        return Response({"imageUrl": str(imageUrl), "id": str(id)}, status=200)
+        # FIX ME: 프린터에서 요청된 스캔 이미지 저장은 user 필드를 기록할 수 없다
+        epson_data: EpsonGlobalImageShare = EpsonGlobalImageShare.objects.filter().order_by('-id').first()
+        image_url = epson_data.image_url
+        return Response({"imageUrl": str(image_url), "id": str(id)}, status=200)
