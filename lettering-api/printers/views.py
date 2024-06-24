@@ -24,11 +24,11 @@ from accounts.domain import LetterWritingStatus
 from .models import EpsonConnectScanData
 import ssl
 import certifi
-import logging
+# import logging
 from .services import get_auth_headers
 from .models import EpsonGlobalImageShare
 
-logger = logging.getLogger(__name__)
+# logger = logging.getLogger(__name__)
 
 EPSON_URL = os.environ.get('EPSON_URL')
 CLIENT_ID = os.environ.get('EPSON_CLIENT_ID')
@@ -353,6 +353,10 @@ class ScannerDestinationsView(APIView):
         client_id = CLIENT_ID
         secret = SECRET
         device = request.user.epson_email
+
+        if not device:
+            return Response({'error': '사용자의 Epson 이메일이 없습니다.'}, status=status.HTTP_400_BAD_REQUEST)
+
         auth = base64.b64encode(f'{client_id}:{secret}'.encode()).decode()
 
         query_param = {
@@ -387,13 +391,21 @@ class ScannerDestinationsView(APIView):
         subject_id = auth_data.get('subject_id')
         access_token = auth_data.get('access_token')
 
+        user_id = request.user.id
         alias_name = f'letter_{request.user.id}'
         add_url = f'https://{host}/api/1/scanning/scanners/{subject_id}/destinations'
+
+        scan_direction = os.environ.get("EPSON_SCAN_DIRECTION")
+
+        destination_url = f'{scan_direction}?user-id={user_id}'
+
+        if not scan_direction:
+            return Response({'error': 'EPSON_SCAN_DIRECTION 환경 변수가 설정되지 않았습니다.'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
         data_param = {
             'alias_name': alias_name,
             'type': 'url',
-            'destination': f'{os.environ.get("EPSON_SCAN_DIRECTION")}',
+            'destination': destination_url,
         }
         data = json.dumps(data_param)
 
@@ -456,13 +468,31 @@ class ScanDataGetterAPI(APIView):
 
     @swagger_auto_schema(
         operation_summary="스캔한 파일 저장",
+        manual_parameters=[
+            openapi.Parameter(
+                'user-id', openapi.IN_QUERY, description="사용자 ID", type=openapi.TYPE_INTEGER, required=True
+            ),
+            openapi.Parameter(
+                'file', openapi.IN_FORM, type=openapi.TYPE_FILE, description='업로드할 파일', required=True
+            )
+        ],
         responses={
             status.HTTP_201_CREATED: openapi.Response('파일 수신 완료'),
-            status.HTTP_400_BAD_REQUEST: openapi.Response('잘못된 요청')
+            status.HTTP_400_BAD_REQUEST: openapi.Response('잘못된 요청'),
+            status.HTTP_404_NOT_FOUND: openapi.Response('이메일에 해당하는 유저가 없습니다.'),
         }
     )
     def post(self, request: Request):
-        logger.info(request.headers)
+
+        user_id = request.GET.get('user-id')
+
+        if not user_id:
+            return Response({'error': '유저 ID 쿼리 파라미터가 없습니다.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            user = User.objects.get(id=user_id)
+        except User.DoesNotExist:
+            return Response({'error': '유저를 찾을 수 없습니다.'}, status=status.HTTP_404_NOT_FOUND)
 
         if not request.FILES:
             return Response(status=status.HTTP_400_BAD_REQUEST)
@@ -471,13 +501,12 @@ class ScanDataGetterAPI(APIView):
         for key in request.FILES:
             files = request.FILES.getlist(key)
             for file in files:
-
                 s3_serial = S3FileUploadSerializer(data={'file': file})
                 if not s3_serial.is_valid():
                     return Response(s3_serial.errors, status=status.HTTP_400_BAD_REQUEST)
 
                 upload_data = s3_serial.save()
-                EpsonGlobalImageShare(image_url=upload_data["file_url"]).save()
+                EpsonGlobalImageShare.objects.create(user=user, image_url=upload_data["file_url"])
                 file_urls.append(upload_data["file_url"])
 
         return Response(status=200)
@@ -537,14 +566,26 @@ class EpsonConnectEmailAPIView(APIView):
 
 
 class ScanDataAPIView(APIView):
+    permission_classes = [IsAuthenticated]
+
     @swagger_auto_schema(
         operation_summary="최근에 스캔한 혹은 가져온 이미지 URL 가져오기",
         responses={
             status.HTTP_200_OK: "imageUrl",
+            status.HTTP_404_NOT_FOUND: openapi.Response(description="해당 사용자의 스캔 데이터를 찾을 수 없습니다."),
         }
     )
-    def get(self, request_data):
-        # FIX ME: 프린터에서 요청된 스캔 이미지 저장은 user 필드를 기록할 수 없다
-        epson_data: EpsonGlobalImageShare = EpsonGlobalImageShare.objects.filter().order_by('-id').first()
+    def get(self, request):
+
+        user_id = request.user.id
+
+        if not user_id:
+            return Response({'error': '유저를 찾을 수 없습니다.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        epson_data = EpsonGlobalImageShare.objects.filter(user__id=user_id).order_by('-created_at').first()
+
+        if not epson_data:
+            return Response({'error': '해당 사용자의 스캔 데이터를 찾을 수 없습니다.'}, status=status.HTTP_404_NOT_FOUND)
+
         image_url = epson_data.image_url
-        return Response({"imageUrl": str(image_url), "id": str(id)}, status=200)
+        return Response({"imageUrl": image_url}, status=status.HTTP_200_OK)

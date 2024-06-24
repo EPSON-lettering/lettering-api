@@ -12,5 +12,9 @@ class EpsonConnectScanData(models.Model):
     imageUrl = models.FileField(upload_to='letters/')
 
 
+
 class EpsonGlobalImageShare(models.Model):
     image_url = models.CharField()
+    user = models.ForeignKey(User, on_delete=models.CASCADE, default=9)
+    created_at = models.DateTimeField(auto_now_add=True, null=True)
+
