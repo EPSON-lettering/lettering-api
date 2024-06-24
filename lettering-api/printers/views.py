@@ -397,10 +397,11 @@ class ScannerDestinationsView(APIView):
 
         scan_direction = os.environ.get("EPSON_SCAN_DIRECTION")
 
-        destination_url = f'{scan_direction}?user-id={user_id}'
 
         if not scan_direction:
             return Response({'error': 'EPSON_SCAN_DIRECTION 환경 변수가 설정되지 않았습니다.'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+        destination_url = f'{scan_direction}{user_id}/'
 
         data_param = {
             'alias_name': alias_name,
@@ -470,21 +471,16 @@ class ScanDataGetterAPI(APIView):
         operation_summary="스캔한 파일 저장",
         manual_parameters=[
             openapi.Parameter(
-                'user-id', openapi.IN_QUERY, description="사용자 ID", type=openapi.TYPE_INTEGER, required=True
-            ),
-            openapi.Parameter(
                 'file', openapi.IN_FORM, type=openapi.TYPE_FILE, description='업로드할 파일', required=True
             )
         ],
         responses={
             status.HTTP_201_CREATED: openapi.Response('파일 수신 완료'),
             status.HTTP_400_BAD_REQUEST: openapi.Response('잘못된 요청'),
-            status.HTTP_404_NOT_FOUND: openapi.Response('이메일에 해당하는 유저가 없습니다.'),
+            status.HTTP_404_NOT_FOUND: openapi.Response('유저를 찾을 수 없습니다.'),
         }
     )
-    def post(self, request: Request):
-
-        user_id = request.GET.get('user-id')
+    def post(self, request: Request, user_id):
 
         if not user_id:
             return Response({'error': '유저 ID 쿼리 파라미터가 없습니다.'}, status=status.HTTP_400_BAD_REQUEST)
