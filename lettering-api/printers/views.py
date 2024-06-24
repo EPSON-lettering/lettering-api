@@ -408,6 +408,7 @@ class ScannerDestinationsView(APIView):
             'type': 'url',
             'destination': destination_url,
         }
+        print(f'data_param: {data_param}')
         data = json.dumps(data_param)
 
         headers = {
@@ -543,7 +544,6 @@ class EpsonConnectEmailAPIView(APIView):
             req = urllib_request.Request(auth_uri, data=query_string.encode('utf-8'), headers=headers, method='POST')
             context = ssl.create_default_context(cafile=certifi.where())
             with urllib_request.urlopen(req, context=context) as res:
-                body = res.read()
                 res_status = res.status
         except error.HTTPError as err:
             return Response({'error': f'{err.code}:{err.reason}:{str(err.read())}'}, status=status.HTTP_400_BAD_REQUEST)
@@ -572,7 +572,6 @@ class ScanDataAPIView(APIView):
         }
     )
     def get(self, request):
-
         user_id = request.user.id
 
         if not user_id:

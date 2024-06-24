@@ -11,8 +11,8 @@ class Comment(models.Model):
     letter = models.ForeignKey(Letter, related_name='comments', on_delete=models.CASCADE)
     sender = models.ForeignKey(User, related_name='sent_comments', on_delete=models.CASCADE)
     receiver = models.ForeignKey(User, related_name='received_comments', on_delete=models.CASCADE)
-    message = models.TextField()
-    image = models.ImageField(upload_to='comment_images/', null=True, blank=True)
+    message = models.TextField(null=True, blank=True)
+    image = models.CharField(null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     type = models.CharField(max_length=10, choices=COMMENT_TYPE_CHOICES)
 

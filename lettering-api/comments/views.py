@@ -39,15 +39,16 @@ class CommentAPIView(APIView):
         letter: Letter = Letter.objects.get(id=letter_id)
         receiver = get_receiver([letter.sender, letter.receiver], sender)
         type = body['type']
+        message = body.get("message")
+        image = body.get("image")
 
         comment = Comment(
             type=body['type'],
             letter=letter,
             sender=sender,
             receiver=receiver,
-            message=body['message'],
-            # image=body['image'],
-            image=None,
+            message=message,
+            image=image,
         ).save()
 
         if type == 'feedback':

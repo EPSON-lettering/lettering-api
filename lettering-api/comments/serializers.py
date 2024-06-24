@@ -13,7 +13,7 @@ class CommentUserSerializer(serializers.ModelSerializer):
 
 class CommentSerializer(serializers.ModelSerializer):
     createdAt = serializers.DateTimeField(source='created_at')
-    image = serializers.ImageField(required=False)
+    image = serializers.CharField(required=False)
     sender = UserSerializer()
     receiver = UserSerializer()
     latestReply = serializers.SerializerMethodField()
