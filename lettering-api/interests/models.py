@@ -5,7 +5,7 @@ from accounts.models import User
 class Interest(models.Model):
     name = models.CharField(max_length=30)
     name_eng = models.CharField(max_length=50)
-    image = models.FileField(upload_to='Interests/', null=True)
+    image = models.CharField(null=True)
 
     def __str__(self):
         return self.name
