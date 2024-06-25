@@ -42,14 +42,22 @@ class CommentAPIView(APIView):
         message = body.get("message")
         image = body.get("image")
 
-        comment = Comment(
-            type=body['type'],
+        comment = Comment.objects.create(
+            type=type,
             letter=letter,
             sender=sender,
             receiver=receiver,
             message=message,
             image=image,
-        ).save()
+        )
+
+        # 알림 생성
+        Notification.objects.create(
+            user=receiver,
+            comment=comment,
+            message=f'{sender.nickname} 님이 새로운 {type}을(를) 보냈습니다!',
+            type='comment'
+        )
 
         if type == 'feedback':
             self.award_badge(sender, '피드백 마스터')
@@ -57,7 +65,8 @@ class CommentAPIView(APIView):
             self.award_badge(sender, '답장의 제왕')
         self.update_user_level(sender)
 
-        return Response(CommentSerializer(comment, sender_data=sender).data, status=201)
+        serialized_comment = CommentSerializer(comment, sender_data=sender)
+        return Response(serialized_comment.data, status=201)
 
     def award_badge(self, user, badge_name):
         badge = Badge.objects.get(name=badge_name)
@@ -111,12 +120,19 @@ class ReplyAPIView(APIView):
         body = request.data
         comment = Comment.objects.get(id=comment_id)
         receiver = get_receiver([comment.receiver, comment.sender], request.user)
-        reply = Reply(
+        reply = Reply.objects.create(
             comment=comment,
             sender=request.user,
             receiver=receiver,
             message=body["message"],
-            image=None
-        ).save()
+            image=body.get("image", None)
+        )
+
+        Notification.objects.create(
+            user=receiver,
+            reply=reply,
+            message='내 피드백/채팅에 새로운 답글이 달렸습니다!',
+            type='reply'
+        )
 
         return Response(ReplySerializer(reply).data, status=status.HTTP_201_CREATED)

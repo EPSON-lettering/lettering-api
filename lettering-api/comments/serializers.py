@@ -47,15 +47,6 @@ class CommentSerializer(serializers.ModelSerializer):
             return ReplySerializer(latest_reply).data
         return None
 
-    def create(self, validated_data):
-        comment = super().create(validated_data)
-        Notification.objects.create(
-            user=comment.receiver,
-            comment=comment,
-            message=f'{comment.sender.nickname} 님이 새로운 {comment.type}을(를) 보냈습니다!',
-            type='comment'
-        )
-        return comment
 
 
 class ReplySerializer(serializers.ModelSerializer):
@@ -67,13 +58,3 @@ class ReplySerializer(serializers.ModelSerializer):
     class Meta:
         model = Reply
         fields = ['id', 'comment', 'sender', 'receiver', 'message', 'image', 'createdAt']
-
-    def create(self, validated_data):
-        reply = super().create(validated_data)
-        Notification.objects.create(
-            user=reply.receiver,
-            reply=reply,
-            message=f'내 피드백/채팅에 새로운 답글이 달렸습니다!',
-            type='reply'
-        )
-        return reply

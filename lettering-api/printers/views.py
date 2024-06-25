@@ -26,11 +26,9 @@ from accounts.domain import LetterWritingStatus
 from .models import EpsonConnectScanData
 import ssl
 import certifi
-# import logging
 from .services import get_auth_headers
 from .models import EpsonGlobalImageShare
 
-# logger = logging.getLogger(__name__)
 
 EPSON_URL = os.environ.get('EPSON_URL')
 CLIENT_ID = os.environ.get('EPSON_CLIENT_ID')
@@ -186,6 +184,13 @@ class EpsonLetterIdPrintConnectAPI(APIView):
         user.status_message = LetterWritingStatus.PROCESSING
         user.save()
 
+        Notification.objects.create(
+            user=letter.sender,
+            letter=letter,
+            message=f'{letter.receiver} 님이 편지를 수령하였습니다!',
+            type='print_started'
+        )
+
         return Response({'message': "프린트가 성공적으로 완료되었습니다"}, status=status.HTTP_200_OK)
 
 
@@ -327,10 +332,20 @@ class EpsonPrintConnectAPI(APIView):
         except error.URLError as err:
             return Response({'error': err.reason}, status=status.HTTP_400_BAD_REQUEST)
 
-        match = Match.objects.get(requester=request_data.user)
+        match = Match.objects.filter(
+            (Q(requester=request_data.user) | Q(acceptor=request_data.user)) & Q(state=True)
+        ).first()
+
+        if not match:
+            return Response({'error': '매칭을 찾을 수 없습니다.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        if match.requester == request_data.user:
+            notification_user = match.acceptor
+        else:
+            notification_user = match.requester
 
         notification = Notification.objects.create(
-            user=match.acceptor,
+            user=notification_user,
             message=f'{request_data.user.nickname} 님이 편지를 작성 중입니다!',
             type='print_started',
         )
