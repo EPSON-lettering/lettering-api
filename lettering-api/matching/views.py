@@ -309,6 +309,13 @@ class EndMatchView(APIView):
         except Match.DoesNotExist:
             return Response({"detail": "매칭을 찾을 수 없습니다."}, status=status.HTTP_404_NOT_FOUND)
 
+
+        requester = match.requester
+        acceptor = match.acceptor
+
+        requester.change_letter_status(LetterWritingStatus.BEFORE)
+        acceptor.change_letter_status(LetterWritingStatus.BEFORE)
+
         match.end_match(reason)
         serializer = MatchSerializer(match)
         return Response(serializer.data, status=status.HTTP_200_OK)
