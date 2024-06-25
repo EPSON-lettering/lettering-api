@@ -11,6 +11,8 @@ from rest_framework.response import Response
 from rest_framework.utils import json
 from rest_framework.views import APIView
 from rest_framework.request import Request
+
+from matching.models import Match
 from notifications.models import Notification
 from .serializers import EpsonConnectPrintSerializer, EpsonScanSerializer, EpsonConnectEmailSerializer
 from letters.serializers import S3FileUploadSerializer
@@ -180,15 +182,6 @@ class EpsonLetterIdPrintConnectAPI(APIView):
         except Letter.DoesNotExist:
             return Response({'error': 'Letter not found'}, status=status.HTTP_404_NOT_FOUND)
 
-        notification = Notification.objects.create(
-            user=letter.receiver,
-            letter=letter,
-            message=f'{request_data.user.nickname} 님이 편지를 작성 중입니다!',
-            is_read=False,
-            type='print_started'
-        )
-        notification.save()
-
         user = request_data.user
         user.status_message = LetterWritingStatus.PROCESSING
         user.save()
@@ -333,6 +326,15 @@ class EpsonPrintConnectAPI(APIView):
             return Response({'error': f'{err.code}:{err.reason}:{str(err.read())}'}, status=status.HTTP_400_BAD_REQUEST)
         except error.URLError as err:
             return Response({'error': err.reason}, status=status.HTTP_400_BAD_REQUEST)
+
+        match = Match.objects.get(requester=request_data.user)
+
+        notification = Notification.objects.create(
+            user=match.acceptor,
+            message=f'{request_data.user.nickname} 님이 편지를 작성 중입니다!',
+            type='print_started',
+        )
+        notification.save()
 
         if res.status != HTTPStatus.OK:
             return Response({'error': f'{res.status}:{res.reason}'}, status=status.HTTP_400_BAD_REQUEST)
