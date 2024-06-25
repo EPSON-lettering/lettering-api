@@ -76,7 +76,7 @@ class UserSerializer(serializers.ModelSerializer):
             'id', 'oauthId', 'nickname', 'profileImageUrl',
             'createdAt', 'withdrawAt', 'language', 'printerStatus',
             'withdrawReason', 'email', 'interests', 'epsonEmail', 'status',
-            'sendingLetterCount'
+            'sendingLetterCount', 'level'
         ]
 
     def __init__(self, *args, **kwargs):
