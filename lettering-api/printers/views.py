@@ -28,6 +28,7 @@ import ssl
 import certifi
 from .services import get_auth_headers
 from .models import EpsonGlobalImageShare
+from django.db.models import Q
 
 
 EPSON_URL = os.environ.get('EPSON_URL')
