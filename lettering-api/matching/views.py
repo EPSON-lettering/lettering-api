@@ -157,8 +157,8 @@ class MatchRequestView(APIView):
             )
             requester = User.objects.get(id=match_request.requester.id)
             acceptor = User.objects.get(id=match_request.receiver.id)
-            requester.change_letter_status(LetterWritingStatus.PROCESSING)
-            acceptor.change_letter_status(LetterWritingStatus.PROCESSING)
+            requester.change_letter_status(LetterWritingStatus.BEFORE)
+            acceptor.change_letter_status(LetterWritingStatus.BEFORE)
 
             serializer = MatchSerializer(match)
             return Response(serializer.data, status=status.HTTP_200_OK)
