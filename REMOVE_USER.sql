@@ -3,6 +3,11 @@ DO $$
         p_user_id INT;
         p_match_id INT;
     BEGIN
+
+        DELETE FROM oauth_oauthuser oauth
+        WHERE oauth.provider_id = 'deveungi@gmail.com'; # 이부분 수정해주세요
+
+
         SELECT u.id INTO p_user_id
         FROM accounts_user u
         WHERE u.nickname = '아직도내가은기로보여' # 이부분 수정해주세요
