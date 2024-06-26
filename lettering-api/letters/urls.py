@@ -23,7 +23,7 @@ schema_view = get_schema_view(
 
 urlpatterns = [
     path('details/<int:letter_id>/', LetterGetterAPI.as_view(), name='get letter details'),
-    path('lettering/<int:scanDataId>', LetterAPIView.as_view(), name='lettering'),
+    path('lettering/<int:scanDataId>/', LetterAPIView.as_view(), name='lettering'),
     path('lettering/', LetterAPIView.as_view(), name='letters'),
     path('list/<int:user_id>', LetterListAPI.as_view(), name='get user letters'),
     path('otherPerson/lettering', CheckOtherPersonAPIView.as_view(), name='receive letters'),

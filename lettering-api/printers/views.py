@@ -595,10 +595,10 @@ class ScanDataAPIView(APIView):
         if not user_id:
             return Response({'error': '유저를 찾을 수 없습니다.'}, status=status.HTTP_400_BAD_REQUEST)
 
-        epson_data = EpsonGlobalImageShare.objects.filter(user__id=user_id).order_by('-created_at').first()
+        epson_data: EpsonGlobalImageShare = EpsonGlobalImageShare.objects.filter(user__id=user_id).order_by('-created_at').first()
 
         if not epson_data:
             return Response({'error': '해당 사용자의 스캔 데이터를 찾을 수 없습니다.'}, status=status.HTTP_404_NOT_FOUND)
 
         image_url = epson_data.image_url
-        return Response({"imageUrl": image_url}, status=status.HTTP_200_OK)
+        return Response({"imageUrl": image_url, "id": epson_data.id}, status=status.HTTP_200_OK)

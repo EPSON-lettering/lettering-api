@@ -82,8 +82,7 @@ class LetterGetterAPI(APIView):
 
 class LetterAPIView(APIView):
     permission_classes = [IsAuthenticated]
-    parser_classes = [JSONParser, FormParser, MultiPartParser]
-    parser_classes = (MultiPartParser, FormParser)
+
     @swagger_auto_schema(
         operation_summary="서로 대화한 내역 조회",
         responses={200: LetterSerializer()}
@@ -103,7 +102,8 @@ class LetterAPIView(APIView):
         }
     )
     def post(self, request):
-        serializer = LetterSerializer(data=request.data, context={'request': request})
+        scan_id: int = request.data.get("scanData_id")
+        serializer = LetterSerializer(data=request.data, context={'request': request, 'scan_id': scan_id})
         if serializer.is_valid():
             letter = serializer.save()
             notification = Notification.objects.create(
@@ -114,9 +114,10 @@ class LetterAPIView(APIView):
                 type='received'
             )
             notification.save()
-            self.award_badge(letter.sender, '편지의 제왕')
-            self.check_consistent_writing(letter.sender)
-            self.update_user_level(letter.sender)
+            # FIX ME: 에러발생함
+            # self.award_badge(letter.sender, '편지의 제왕')
+            # self.check_consistent_writing(letter.sender)
+            # self.update_user_level(letter.sender)
             return Response(serializer.data, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 

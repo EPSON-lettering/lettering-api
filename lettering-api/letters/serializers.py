@@ -1,6 +1,6 @@
 from rest_framework import serializers
 from .models import Letter
-from printers.models import EpsonConnectScanData
+from printers.models import EpsonGlobalImageShare
 from matching.models import Match
 import boto3
 from botocore.config import Config
@@ -21,14 +21,17 @@ class LetterSerializer(serializers.Serializer):
     scanData_id = serializers.IntegerField(read_only=True)
 
     def create(self, validated_data):
-        user = self.context['request'].user
+        ctx = self.context["request"]
+        user = ctx.user
         match = Match.objects.get(requester=user)
-        ScanData = EpsonConnectScanData.objects.get(id=self.context['scanDataId'])
+        id = self.context["scan_id"]
+        print(f'id: {id}')
+        epson_image: EpsonGlobalImageShare = EpsonGlobalImageShare.objects.get(id=id)
         letter = Letter.objects.create(
             sender=user,
             receiver=match.acceptor,
             match=match,
-            image_url=ScanData['image_url'],
+            image_url=epson_image.image_url,
         )
         letter.save()
         return letter
