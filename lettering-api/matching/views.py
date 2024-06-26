@@ -155,8 +155,9 @@ class MatchRequestView(APIView):
                 learning_lang=match_request.receiver.language,
                 state=True
             )
-            requester = User.objects.get(id=match_request.requester.id)
-            acceptor = User.objects.get(id=match_request.receiver.id)
+            requester = match_request.requester
+            acceptor = match_request.receiver
+
             requester.change_letter_status(LetterWritingStatus.BEFORE)
             acceptor.change_letter_status(LetterWritingStatus.BEFORE)
 

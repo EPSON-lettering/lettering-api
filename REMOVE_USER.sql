@@ -5,12 +5,12 @@ DO $$
     BEGIN
 
         DELETE FROM oauth_oauthuser oauth
-        WHERE oauth.provider_id = '20227131@edu.hanbat.ac.kr'; -- 이부분 수정해주세요
+        WHERE oauth.provider_id = 'west.east1832@gmail.com'; -- 이부분 수정해주세요
 
 
         SELECT u.id INTO p_user_id
         FROM accounts_user u
-        WHERE u.nickname = '동현2' -- 이부분 수정해주세요
+        WHERE u.nickname = '동현' -- 이부분 수정해주세요
         LIMIT 1;
 
         SELECT m.id INTO p_match_id
