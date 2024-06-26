@@ -190,12 +190,13 @@ class GetMatchDetailsView(APIView):
         if match is None:
             return Response(None, status=200)
 
-        acceptor_id = match.acceptor.id
-        acceptor = User.objects.get(id=acceptor_id)
-        user_interests = UserInterest.objects.filter(user=acceptor)
-        interests = [user_interest.interest for user_interest in user_interests]
+        requester_interests = set(UserInterest.objects.filter(user=match.requester).values_list('interest', flat=True))
+        acceptor_interests = set(UserInterest.objects.filter(user=match.acceptor).values_list('interest', flat=True))
+
+        common_interests = requester_interests & acceptor_interests
+        interests = Interest.objects.filter(id__in=common_interests)
+
         result = IntegrateSearchMatchDetailsSerializer(match, interests=interests)
-        print(f'result(serial): {result}')
         return Response(result.data, status=status.HTTP_200_OK)
 
 
@@ -337,9 +338,12 @@ class MatchOpponentGetterView(APIView):
                  )
         if not match:
             return Response({"message": "매칭이 존재하지 않습니다."}, status=status.HTTP_404_NOT_FOUND)
-        opponent = MatchUserSerializer(match.acceptor).data
-        user = User.objects.get(id=opponent['id'])
-        user_interests = UserInterest.objects.filter(user=user)
+        if match.requester == req.user:
+            opponent = match.acceptor
+        else:
+            opponent = match.requester
+
+        user_interests = UserInterest.objects.filter(user=opponent)
         interests = [user_interest.interest for user_interest in user_interests]
-        result = UserSerializer(user, interests=interests).data
+        result = UserSerializer(opponent, interests=interests).data
         return Response(result, status=200)

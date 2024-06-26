@@ -54,12 +54,13 @@ class SearchMatchDetailsSerializer(serializers.ModelSerializer):
 
 class IntegrateSearchMatchDetailsSerializer(serializers.ModelSerializer):
     interests = serializers.SerializerMethodField()
+    requester = MatchUserSerializer()
     acceptor = MatchUserSerializer()
     createdAt = serializers.DateTimeField(source='created_at')
 
     class Meta:
         model = Match
-        fields = ['id', 'acceptor', 'createdAt', 'interests']
+        fields = ['id', 'requester', 'acceptor', 'createdAt', 'interests']
 
     def __init__(self, *args, **kwargs):
         self.interests = kwargs.pop('interests', [])
