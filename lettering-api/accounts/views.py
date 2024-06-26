@@ -120,6 +120,12 @@ class GoogleCallback(APIView):
         try:
             oauth_user = OauthUser.objects.get(provider='google', provider_id=email)
             user = User.objects.get(oauth=oauth_user)
+            if user is None:
+                return Response({
+                    'unique': email,
+                    'provider': 'google',
+                    'message': '이메일에 해당하는 유저가 존재하지 않습니다. 회원가입을 진행해주세요.'
+                }, status=status.HTTP_401_UNAUTHORIZED)
             user.is_loggined = True
             user.save()
             user_interests = UserInterest.objects.filter(user=user)
