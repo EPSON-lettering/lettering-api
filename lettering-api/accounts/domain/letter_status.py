@@ -6,11 +6,8 @@ class LetterWritingStatus(Enum):
     PROCESSING = 1
 
     def parse(self) -> int:
-        return parse_letter_status(self)
+        return self.value
 
 
-def parse_letter_status(status: LetterWritingStatus):
-    print(status)
-    if status.PROCESSING:
-        return 1
-    return 0
+def parse_letter_status(status: LetterWritingStatus) -> int:
+    return status.value
