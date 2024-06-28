@@ -46,6 +46,7 @@ class RegisterUserSerializer(serializers.Serializer):
             nickname=validated_data['nickname'],
             language=language,
             is_loggined=True,
+            none_profile_color=validated_data['noneProfileColor']
         )
 
         interests_ids = validated_data['interests']
