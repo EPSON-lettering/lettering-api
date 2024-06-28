@@ -114,7 +114,6 @@ class LetterAPIView(APIView):
                 type='received'
             )
             notification.save()
-            # FIX ME: 에러발생함
             self.award_badge(letter.sender, '편지의 제왕')
             self.check_consistent_writing(letter.sender)
             self.update_user_level(letter.sender)
@@ -171,12 +170,22 @@ class LetterAPIView(APIView):
         return True
 
     def update_user_level(self, user):
-        badges = UserBadge.objects.filter(user=user)
-        if badges.exists():
-            min_level = min(badge.step.step_number for badge in badges)
-            if min_level > 1 and all(badge.step.step_number == min_level for badge in badges):
+        badges = Badge.objects.all()
+        user_badges = UserBadge.objects.filter(user=user)
+
+        if not user_badges.exists():
+            return
+
+        if user_badges.count() == badges.count():
+            try:
+                min_level = min(user_badge.step.step_number for user_badge in user_badges)
+            except AttributeError:
+                return
+
+            if min_level > user.level:
                 user.level = min_level
                 user.save()
+
 
     @swagger_auto_schema(
         operation_summary="편지 삭제",

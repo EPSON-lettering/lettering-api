@@ -51,7 +51,6 @@ class CommentAPIView(APIView):
             image=image,
         )
 
-        # 알림 생성
         Notification.objects.create(
             user=receiver,
             comment=comment,
@@ -89,12 +88,22 @@ class CommentAPIView(APIView):
         user_badge.save()
 
     def update_user_level(self, user):
-        badges = UserBadge.objects.filter(user=user)
-        if badges.exists():
-            min_level = min(badge.step.step_number for badge in badges)
-            if min_level > 1 and all(badge.step.step_number == min_level for badge in badges):
+        badges = Badge.objects.all()
+        user_badges = UserBadge.objects.filter(user=user)
+
+        if not user_badges.exists():
+            return
+
+        if user_badges.count() == badges.count():
+            try:
+                min_level = min(user_badge.step.step_number for user_badge in user_badges)
+            except AttributeError:
+                return
+
+            if min_level > user.level:
                 user.level = min_level
                 user.save()
+
 
 
 class ReplyAPIView(APIView):
