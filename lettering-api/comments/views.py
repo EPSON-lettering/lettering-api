@@ -59,11 +59,11 @@ class CommentAPIView(APIView):
             type='comment'
         )
 
-        # if type == 'feedback':
-        #     self.award_badge(sender, '피드백 마스터')
-        # if type == 'chat':
-        #     self.award_badge(sender, '답장의 제왕')
-        # self.update_user_level(sender)
+        if type == 'feedback':
+            self.award_badge(sender, '피드백 마스터')
+        if type == 'chat':
+            self.award_badge(sender, '답장의 제왕')
+        self.update_user_level(sender)
 
         serialized_comment = CommentSerializer(comment, sender_data=sender)
         return Response(serialized_comment.data, status=201)

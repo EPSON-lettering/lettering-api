@@ -115,9 +115,9 @@ class LetterAPIView(APIView):
             )
             notification.save()
             # FIX ME: 에러발생함
-            # self.award_badge(letter.sender, '편지의 제왕')
-            # self.check_consistent_writing(letter.sender)
-            # self.update_user_level(letter.sender)
+            self.award_badge(letter.sender, '편지의 제왕')
+            self.check_consistent_writing(letter.sender)
+            self.update_user_level(letter.sender)
             return Response(serializer.data, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
