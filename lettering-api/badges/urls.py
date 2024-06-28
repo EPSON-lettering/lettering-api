@@ -2,8 +2,7 @@ from django.urls import path
 from drf_yasg import openapi
 from drf_yasg.views import get_schema_view
 
-from .views import UserBadgeAPIView
-
+from .views import UserBadgeAPIView, BadgeAPIView
 
 schema_view = get_schema_view(
     openapi.Info(
@@ -16,4 +15,5 @@ schema_view = get_schema_view(
 
 urlpatterns = [
     path('',UserBadgeAPIView.as_view() , name='badges'),
+    path('all/',BadgeAPIView.as_view(), name='badges'),
 ]

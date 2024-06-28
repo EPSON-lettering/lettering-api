@@ -1,8 +1,6 @@
 from rest_framework import serializers
 from .models import UserBadge, Badge, BadgeStep
 
-from rest_framework import serializers
-from .models import UserBadge, Badge, BadgeStep
 
 class BadgeStepSerializer(serializers.ModelSerializer):
     stepNumber = serializers.IntegerField(source='step_number')
@@ -12,10 +10,12 @@ class BadgeStepSerializer(serializers.ModelSerializer):
         model = BadgeStep
         fields = ['stepNumber', 'requiredCount']
 
+
 class BadgeSerializer(serializers.ModelSerializer):
     class Meta:
         model = Badge
         fields = ['name', 'description', 'icon']
+
 
 class UserBadgeSerializer(serializers.ModelSerializer):
     badge = BadgeSerializer()
