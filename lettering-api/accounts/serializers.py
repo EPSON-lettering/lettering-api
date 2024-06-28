@@ -30,6 +30,7 @@ class RegisterUserSerializer(serializers.Serializer):
         child=serializers.IntegerField(),
         allow_empty=False
     )
+    noneProfileColor = serializers.CharField()
 
     def create(self, validated_data):
         language_name = validated_data['language']
