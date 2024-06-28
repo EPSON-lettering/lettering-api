@@ -3,9 +3,19 @@ from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
 from drf_yasg.utils import swagger_auto_schema
-from drf_yasg import openapi
-from .serializers import UserBadgeSerializer
-from .models import UserBadge
+from .serializers import UserBadgeSerializer, BadgeSerializer
+from .models import UserBadge, Badge
+
+
+class BadgeAPIView(APIView):
+    @swagger_auto_schema(
+        operation_summary="전체 뱃지 조회",
+        responses={200: BadgeSerializer(many=True)}
+    )
+    def get(self, request):
+        badges = Badge.objects.all()
+        serializer = BadgeSerializer(badges, many=True)
+        return Response(serializer.data, status=status.HTTP_200_OK)
 
 
 class UserBadgeAPIView(APIView):

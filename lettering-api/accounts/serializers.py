@@ -30,6 +30,7 @@ class RegisterUserSerializer(serializers.Serializer):
         child=serializers.IntegerField(),
         allow_empty=False
     )
+    noneProfileColor = serializers.CharField()
 
     def create(self, validated_data):
         language_name = validated_data['language']
@@ -46,6 +47,7 @@ class RegisterUserSerializer(serializers.Serializer):
             nickname=validated_data['nickname'],
             language=language,
             is_loggined=True,
+            none_profile_color=validated_data['noneProfileColor']
         )
 
         interests_ids = validated_data['interests']
@@ -69,6 +71,7 @@ class UserSerializer(serializers.ModelSerializer):
     epsonEmail = serializers.EmailField(source='epson_email')
     status = serializers.IntegerField(source='status_message', read_only=True)
     sendingLetterCount = serializers.SerializerMethodField()
+    noneProfileColor = serializers.CharField(source='none_profile_color', read_only=True)
 
     class Meta:
         model = User
@@ -76,7 +79,7 @@ class UserSerializer(serializers.ModelSerializer):
             'id', 'oauthId', 'nickname', 'profileImageUrl',
             'createdAt', 'withdrawAt', 'language', 'printerStatus',
             'withdrawReason', 'email', 'interests', 'epsonEmail', 'status',
-            'sendingLetterCount', 'level'
+            'sendingLetterCount', 'level', 'noneProfileColor'
         ]
 
     def __init__(self, *args, **kwargs):

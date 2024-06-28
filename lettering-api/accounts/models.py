@@ -26,6 +26,7 @@ class User(AbstractBaseUser):
     email = models.EmailField()
     status_message = models.IntegerField(null=True, blank=True, default=0)
     level = models.IntegerField(default=1)
+    none_profile_color = models.CharField(null=True, blank=True)
 
     def __str__(self):
         return self.nickname
