@@ -69,6 +69,7 @@ class UserSerializer(serializers.ModelSerializer):
     epsonEmail = serializers.EmailField(source='epson_email')
     status = serializers.IntegerField(source='status_message', read_only=True)
     sendingLetterCount = serializers.SerializerMethodField()
+    noneProfileColor = serializers.CharField(source='none_profile_color', read_only=True)
 
     class Meta:
         model = User
@@ -76,7 +77,7 @@ class UserSerializer(serializers.ModelSerializer):
             'id', 'oauthId', 'nickname', 'profileImageUrl',
             'createdAt', 'withdrawAt', 'language', 'printerStatus',
             'withdrawReason', 'email', 'interests', 'epsonEmail', 'status',
-            'sendingLetterCount', 'level'
+            'sendingLetterCount', 'level', 'noneProfileColor'
         ]
 
     def __init__(self, *args, **kwargs):
