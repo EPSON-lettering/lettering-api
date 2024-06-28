@@ -119,7 +119,7 @@ class ReplyAPIView(APIView):
     def post(self, request, comment_id):
         body = request.data
         comment = Comment.objects.get(id=comment_id)
-        receiver = get_receiver([comment.receiver, comment.sender], request.user)
+        receiver = get_receiver([comment.sender, comment.receiver], request.user)
         reply = Reply.objects.create(
             comment=comment,
             sender=request.user,

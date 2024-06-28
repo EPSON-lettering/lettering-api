@@ -3,6 +3,7 @@ from letters.models import Letter
 
 
 def get_receiver(users, sender: User):
-    if users[0].id == sender.id:
-        return users[0]
-    return users[1]
+    for user in users:
+        if user.id != sender.id:
+            return user
+    return None
