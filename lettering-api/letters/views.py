@@ -222,7 +222,7 @@ class LetterSendingAPI(APIView):
             image_url=file_url
         )
         print(f'user: {request.user}')
-        request.user.change_letter_status(LetterWritingStatus.BEFORE)
+        request.user.change_letter_status(LetterWritingStatus.COMPLETED)
         letter.save()
         letter_serializer = LetterModelSerializer(letter)
         return Response({"letter": letter_serializer.data}, status=status.HTTP_200_OK)
