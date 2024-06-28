@@ -226,9 +226,16 @@ class LetterSendingAPI(APIView):
                  .order_by("-created_at")
                  .first()
                  )
+        if not match:
+            match = (
+                Match.objects.filter(acceptor=request.user).order_by("-created_at").first()
+            )
+            receiver = match.requester
+        else:
+            receiver = match.acceptor
         letter = Letter.objects.create(
             sender=request.user,
-            receiver=match.acceptor,
+            receiver=receiver,
             match=match,
             image_url=file_url
         )
