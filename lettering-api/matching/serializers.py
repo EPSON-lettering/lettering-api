@@ -6,10 +6,11 @@ from interests.serializers import InterestSerializer
 
 class MatchUserSerializer(serializers.ModelSerializer):
     profileImageUrl = serializers.CharField(source='profile_image_url')
+    noneProfileColor = serializers.CharField(source='none_profile_color')
 
     class Meta:
         model = User
-        fields = ['id', 'nickname', 'profileImageUrl', 'language']
+        fields = ['id', 'nickname', 'profileImageUrl', 'language', 'noneProfileColor']
 
 
 class MatchRequestSerializer(serializers.ModelSerializer):

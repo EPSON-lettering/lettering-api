@@ -47,7 +47,7 @@ class MatchView(APIView):
             return Response({"detail": "닉네임이 필요합니다."}, status=status.HTTP_400_BAD_REQUEST)
 
         try:
-            user = User.objects.get(nickname=nickname)
+            user: User = User.objects.get(nickname=nickname)
         except User.DoesNotExist:
             return Response({"detail": "유저를 찾을 수 없습니다."}, status=status.HTTP_404_NOT_FOUND)
 

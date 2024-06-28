@@ -114,9 +114,11 @@ class LetterAPIView(APIView):
                 type='received'
             )
             notification.save()
-            self.award_badge(letter.sender, '편지의 제왕')
-            self.check_consistent_writing(letter.sender)
-            self.update_user_level(letter.sender)
+            # self.award_badge(letter.sender, '편지의 제왕')
+            # self.check_consistent_writing(letter.sender)
+            # self.update_user_level(letter.sender)
+            user: User = request.user
+            user.change_letter_status(LetterWritingStatus.COMPLETED)
             return Response(serializer.data, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
