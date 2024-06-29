@@ -345,12 +345,11 @@ class EpsonPrintConnectAPI(APIView):
         else:
             notification_user = match.requester
 
-        notification = Notification.objects.create(
+        Notification.objects.create(
             user=notification_user,
             message=f'{request_data.user.nickname} 님이 편지를 작성 중입니다!',
             type='print_started',
         )
-        notification.save()
 
         if res.status != HTTPStatus.OK:
             return Response({'error': f'{res.status}:{res.reason}'}, status=status.HTTP_400_BAD_REQUEST)

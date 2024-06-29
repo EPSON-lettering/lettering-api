@@ -106,17 +106,16 @@ class LetterAPIView(APIView):
         serializer = LetterSerializer(data=request.data, context={'request': request, 'scan_id': scan_id})
         if serializer.is_valid():
             letter = serializer.save()
-            notification = Notification.objects.create(
+            Notification.objects.create(
                 user=letter.receiver,
                 letter=letter,
                 message=f'{request.user.nickname} 님의 편지가 도착했습니다.',
-                is_read=False,
                 type='received'
             )
             notification.save()
-            # self.award_badge(letter.sender, '편지의 제왕')
-            # self.check_consistent_writing(letter.sender)
-            # self.update_user_level(letter.sender)
+            self.award_badge(letter.sender, '편지의 제왕')
+            self.check_consistent_writing(letter.sender)
+            self.update_user_level(letter.sender)
             user: User = request.user
             user.change_letter_status(LetterWritingStatus.COMPLETED)
             return Response(serializer.data, status=status.HTTP_201_CREATED)
@@ -238,6 +237,12 @@ class LetterSendingAPI(APIView):
             receiver=receiver,
             match=match,
             image_url=file_url
+        )
+        Notification.objects.create(
+            user=letter.receiver,
+            letter=letter,
+            message=f'{request.user.nickname} 님의 편지가 도착했습니다.',
+            type='received'
         )
         print(f'user: {request.user}')
         request.user.change_letter_status(LetterWritingStatus.COMPLETED)
